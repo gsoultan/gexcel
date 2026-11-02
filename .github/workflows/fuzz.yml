@@ -1,0 +1,34 @@
+name: Fuzz
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { pkg: ./formula, fn: FuzzParse }
+          - { pkg: ./reader, fn: FuzzRead }
+          - { pkg: ./format, fn: FuzzFormat }
+          - { pkg: ./ref, fn: FuzzParse }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Fuzz ${{ matrix.target.fn }}
+        run: go test -run=^$ -fuzz=${{ matrix.target.fn }} -fuzztime=10m ${{ matrix.target.pkg }}
+      - name: Upload crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crashers-${{ matrix.target.fn }}
+          path: "**/testdata/fuzz/**"

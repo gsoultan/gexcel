@@ -1,0 +1,10 @@
+*.exe
+.idea
+.cursor
+.junie
+/*.xlsx
+/*.xlsm
+/*.csv
+/out/
+graphify-out/cache/
+graphify-out/graph.html

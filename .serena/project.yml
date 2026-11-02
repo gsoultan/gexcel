@@ -1,0 +1,18 @@
+# Serena project configuration for gexcel.
+# Memories live in .serena/memories/ and are read at the start of every task
+# and updated when a task finishes (see CLAUDE.md).
+project_name: "gexcel"
+languages:
+  - go
+encoding: "utf-8"
+ignore_all_files_in_gitignore: true
+ignored_paths:
+  - graphify-out
+  - "*.xlsx"
+read_only: false
+excluded_tools: []
+initial_prompt: |
+  gexcel is a pure-Go Excel (.xlsx/.xlsm) library: read, write, stream, style, charts, tables,
+  conditional formatting, validation, comments, protection and a formula engine.
+  Read the memories `project_overview`, `architecture`, `feature_coverage` and
+  `task_completion_checklist` before changing code.

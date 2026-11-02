@@ -1,0 +1,55 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, vet and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "gofmt needed on:"; echo "$out"; exit 1; fi
+      - name: Copyright headers
+        run: ./scripts/check-headers.sh
+      - name: go vet
+        run: go vet ./...
+      - name: go test (race)
+        run: go test -race -count=1 ./...
+      - name: Short fuzz smoke
+        run: |
+          go test -run=^$ -fuzz=FuzzParse -fuzztime=20s ./formula
+          go test -run=^$ -fuzz=FuzzRead -fuzztime=20s ./reader
+          go test -run=^$ -fuzz=FuzzFormat -fuzztime=10s ./format
+
+  external:
+    name: LibreOffice and openpyxl validation
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install LibreOffice and openpyxl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc python3-pip
+          python3 -m pip install --break-system-packages openpyxl
+      - name: Round-trip through LibreOffice and openpyxl
+        env:
+          GEXCEL_EXTERNAL: "1"
+        run: go test -count=1 -run 'External' ./tests/...
