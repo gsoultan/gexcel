@@ -391,7 +391,7 @@ func (d *docReader) readCustomProps(name string) {
 		case "bool":
 			val = t == "true"
 		case "i4", "i2", "i8", "int", "ui4":
-			if n, err := strconv.ParseInt(t, 10, 64); err == nil {
+			if n, err := strconv.ParseInt(t, 10, 0); err == nil {
 				val = int(n)
 			}
 		case "r8", "r4", "decimal":
