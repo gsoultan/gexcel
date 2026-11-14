@@ -221,7 +221,9 @@ func parseSection(code string) Section {
 			s.ExpPlus = runes[i+1] == '+'
 			s.Tokens = append(s.Tokens, Token{TokExp, string(runes[i : i+2])})
 			i++
-		case r == '/' && !s.IsDate && len(s.IntDigits) > 0:
+		case r == '/' && !s.IsDate && !seenDec && !seenExp && len(s.IntDigits) > 0:
+			// A slash after a decimal point or an exponent is a literal: only
+			// integer placeholders can be a numerator.
 			seenSlash = true
 			s.Fraction = true
 			// Digits before the slash (after the last space) are the numerator.
@@ -293,7 +295,7 @@ func parseSection(code string) Section {
 			}
 		}
 		s.FracNum = num
-		s.IntDigits = s.IntDigits[:len(s.IntDigits)-len(num)]
+		s.IntDigits = s.IntDigits[:len(s.IntDigits)-min(len(num), len(s.IntDigits))]
 	}
 	// Grouping and scaling commas: a comma between digit placeholders groups
 	// thousands; commas right after the last placeholder divide by 1000 each.
@@ -796,7 +798,7 @@ func (s *Section) fraction(av float64) string {
 		den = s.FracFixed
 		num = int(math.Round(rem * float64(den)))
 	} else {
-		maxDen := int(math.Pow(10, float64(len(s.FracDen)))) - 1
+		maxDen := int(math.Pow(10, float64(min(len(s.FracDen), maxFracDigits)))) - 1
 		num, den = bestFraction(rem, maxDen)
 	}
 	if num == den && den > 0 {
@@ -891,25 +893,51 @@ func digitFirst(s *Section, i, grp int) bool {
 	return true
 }
 
-// bestFraction finds the fraction closest to v with a denominator up to maxDen
-// (Stern-Brocot / continued fractions).
+// maxFracDigits caps the denominator placeholders that count: a float64
+// holds no more precision than that.
+const maxFracDigits = 15
+
+// bestFraction returns the fraction n/d closest to v (v >= 0) with
+// d <= maxDen, preferring the smaller denominator on a tie. It walks the
+// continued fraction of v, so the cost does not grow with maxDen: a format
+// with a long denominator must not turn into a long search.
 func bestFraction(v float64, maxDen int) (int, int) {
 	if maxDen < 1 {
 		maxDen = 1
 	}
-	bestN, bestD := 0, 1
-	bestErr := v
-	for d := 1; d <= maxDen; d++ {
-		n := int(math.Round(v * float64(d)))
-		err := math.Abs(v - float64(n)/float64(d))
-		if err < bestErr-1e-12 {
-			bestN, bestD, bestErr = n, d, err
-			if err == 0 {
-				break
-			}
-		}
+	if !(v > 0) {
+		return 0, 1
 	}
-	return bestN, bestD
+	if v >= 1 { // an improper fraction: the format has no integer part
+		if v >= 1e15 {
+			return int(math.Min(v, 9e18)), 1
+		}
+		whole := math.Floor(v)
+		n, d := bestFraction(v-whole, maxDen)
+		return int(whole)*d + n, d
+	}
+	p0, q0, p1, q1 := 0, 1, 1, 0 // the two latest convergents
+	x := v
+	for {
+		a := math.Floor(x)
+		if a > float64(maxDen) || q0+int(a)*q1 > maxDen {
+			break
+		}
+		p0, q0, p1, q1 = p1, q1, p0+int(a)*p1, q0+int(a)*q1
+		frac := x - a
+		if frac < 1e-12 {
+			return p1, q1
+		}
+		x = 1 / frac
+	}
+	// The best candidates are the last convergent and the largest
+	// semiconvergent that still fits.
+	k := (maxDen - q0) / q1
+	sn, sd := p0+k*p1, q0+k*q1
+	if sd == 0 || math.Abs(v-float64(p1)/float64(q1)) <= math.Abs(v-float64(sn)/float64(sd))+1e-12 {
+		return p1, q1
+	}
+	return sn, sd
 }
 
 var monthNames = [...]string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}

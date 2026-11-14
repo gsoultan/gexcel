@@ -28,3 +28,8 @@ Open items found while building and validating; pick these up in follow-up PRs.
 - Pictures in cells are verified against XlsxWriter output and by round trip, not in real Excel.
   The formula engine sees a picture cell as empty, where Excel sees a rich value.
 - The function count is 205 (`len(formula.Functions())`), not the ~230 quoted earlier.
+- FuzzFormat (CI smoke) found two faults in `format`: `0.00/0` panicked (a slash after a decimal
+  point or exponent was parsed as a fraction and took numerator digits that were not integer
+  placeholders; such a slash is now a literal), and a long denominator such as `0/0000000000`
+  made `bestFraction` scan up to 10^n candidates (now a continued-fraction search, denominator
+  digits capped at 15). Both inputs are kept in `format/testdata/fuzz/FuzzFormat/`.

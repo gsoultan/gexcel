@@ -1,17 +1,17 @@
 # Graph Report - gexcel  (2026-11-14)
 
 ## Corpus Check
-- 80 files · ~90,380 words
+- 80 files · ~90,999 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 2 file(s) not represented in the graph (top: (none) 2)
+- Unclassified: 4 file(s) not represented in the graph (top: (none) 4)
 
 ## Summary
-- 1490 nodes · 4994 edges · 70 communities (50 shown, 20 thin omitted)
-- Extraction: 86% EXTRACTED · 14% INFERRED · 0% AMBIGUOUS · INFERRED: 699 edges (avg confidence: 0.85)
+- 1492 nodes · 5002 edges · 71 communities (51 shown, 20 thin omitted)
+- Extraction: 86% EXTRACTED · 14% INFERRED · 0% AMBIGUOUS · INFERRED: 701 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6ee71aa9`
+- Built from commit: `a82c77fa`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,7 +28,7 @@
 - Builder
 - funcs_date.go
 - Sheet
-- Node
+- Token
 - Cell
 - Value
 - NewBuilder
@@ -45,41 +45,39 @@
 - Calculator
 - .Workbook
 - codeql.yml
-- Token
 - New
 - Func
 - New
-- Style
+- Styles
 - Writer
 - gexcel — Excel feature coverage
 - gexcel.go
-- .edit
 - Cell
-- ToValue
-- Border
+- Color
+- Wrap
 - Workbook
 - CondFmtRule
 - siXML
 - CellImage
-- MustRange
+- New
 - protect.go
-- io.Writer
+- StreamSheet
 - sheetWriter
 - each
-- Alignment
-- writer/richdata.go
+- Style
+- ParseArea
 - project.yml
 - xlsxwriter_cell_images_4d5b9f35.md
-- Row
+- scanRange
 - Anchor
-- Table
-- Comment
+- ParseRange
+- ColName
+- SparklineGroup
+- Font
 - Image
-- DefinedName
 - HeaderFooter
 - PageMargins
 - PageSetup
-- Hyperlink
 - CLAUDE.md
 - check-headers.sh
 - suggested_commands.md
@@ -99,41 +97,45 @@
 10. `Cell` - 58 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Drawings` --references--> `CellImage`  [INFERRED]
-  .serena/memories/feature_coverage.md → model/features.go
 - `Data flow` --references--> `Chart`  [INFERRED]
   .serena/memories/architecture.md → chart/chart.go
 - `Formula engine` --references--> `Calculator`  [INFERRED]
   .serena/memories/architecture.md → formula/calc.go
 - `Layout` --references--> `Calculator`  [INFERRED]
   .serena/memories/project_overview.md → formula/calc.go
+- `Formula engine` --references--> `Context`  [INFERRED]
+  .serena/memories/architecture.md → formula/eval.go
 - `Layout` --references--> `Wrap()`  [INFERRED]
   .serena/memories/project_overview.md → gexcel.go
 
 ## Import Cycles
 - 2-file cycle: `reader/reader_test.go -> reader/richdata_test.go -> reader/reader_test.go`
 
-## Communities (70 total, 20 thin omitted)
+## Communities (71 total, 20 thin omitted)
 
 ### Community 0 - "ref.go"
 Cohesion: 0.12
-Nodes (8): BoolNode, EmptyNode, ErrorNode, NameNode, NumberNode, StringNode, StructuredNode, Theme
+Nodes (10): BoolNode, EmptyNode, ErrorNode, Kind, NameNode, NumberNode, StringNode, StructuredNode (+2 more)
 
 ### Community 1 - "Evaluator"
 Cohesion: 0.11
-Nodes (72): Evaluator, aggAverage(), aggCount(), aggMax(), aggMin(), aggSum(), fnAtan2(), fnAverage() (+64 more)
+Nodes (71): Evaluator, aggAverage(), aggCount(), aggMax(), aggMin(), aggSum(), fnAtan2(), fnAverage() (+63 more)
+
+### Community 3 - "cell"
+Cohesion: 0.04
+Nodes (5): ToValue(), cell, Hyperlink, IsErrorCode(), Rich()
 
 ### Community 4 - "funcs_lookup.go"
 Cohesion: 0.20
 Nodes (36): column(), flatten(), fnAddress(), fnChooseRC(), fnDrop(), fnFilter(), fnHLookup(), fnIndex() (+28 more)
 
 ### Community 5 - "chartWriter"
-Cohesion: 0.06
-Nodes (43): AnchorRef, Axis, Chart, DataLabels, LineStyle, Series, Title, Type (+35 more)
+Cohesion: 0.10
+Nodes (21): AnchorRef, Axis, Chart, DataLabels, LineStyle, Series, Type, DataPoint (+13 more)
 
 ### Community 6 - "Format"
-Cohesion: 0.08
-Nodes (31): DurationToSerial(), SerialToDuration(), ToSerial(), Format, bestFraction(), digitFirst(), digitGroup(), fixed() (+23 more)
+Cohesion: 0.10
+Nodes (27): Format, bestFraction(), digitFirst(), digitGroup(), fixed(), General(), general(), group() (+19 more)
 
 ### Community 7 - ".Arg"
 Cohesion: 0.17
@@ -148,28 +150,24 @@ Cohesion: 0.13
 Nodes (26): DefaultPageMargins(), PageBreak, SheetProtection, Builder, FormatRanges(), gexcel — code style and conventions, autoFilterXML(), breaksXML() (+18 more)
 
 ### Community 10 - "funcs_date.go"
-Cohesion: 0.19
-Nodes (25): FromSerial(), addMonths(), datePart(), days360(), fnDate(), fnDateDif(), fnDateValue(), fnDays() (+17 more)
+Cohesion: 0.15
+Nodes (29): DurationToSerial(), FromSerial(), SerialToDuration(), ToSerial(), TestSerial(), addMonths(), datePart(), days360() (+21 more)
 
 ### Community 11 - "Sheet"
 Cohesion: 0.12
 Nodes (17): ColorFilter, CustomFilter, DateGroupItem, DynamicFilter, IconFilter, Pane, PrintOptions, Relationship (+9 more)
 
-### Community 12 - "Node"
-Cohesion: 0.09
-Nodes (22): ArrayNode, binPrec(), Parse(), parseRefNode(), References(), String(), walk(), writeNode() (+14 more)
-
-### Community 13 - "Cell"
-Cohesion: 0.21
-Nodes (3): Cell, cellAt(), rangeAttr()
+### Community 12 - "Token"
+Cohesion: 0.06
+Nodes (43): ArrayNode, binPrec(), Parse(), parseRefNode(), References(), String(), walk(), writeNode() (+35 more)
 
 ### Community 14 - "Value"
-Cohesion: 0.13
-Nodes (5): numberOrError(), Kind, Value, Value, ValueKind
+Cohesion: 0.16
+Nodes (5): Value, ValueKind, cellImageMedia, cellImages, cellImageValue
 
 ### Community 15 - "NewBuilder"
-Cohesion: 0.17
-Nodes (14): PivotTable, RawPart, CustomProperty, ExternalLink, NewBuilder(), externalLinkOf(), appPropsXML(), boolWord() (+6 more)
+Cohesion: 0.15
+Nodes (15): PivotTable, RawPart, CustomProperty, ExternalLink, NewBuilder(), externalLinkOf(), appPropsXML(), boolWord() (+7 more)
 
 ### Community 16 - "steps"
 Cohesion: 0.08
@@ -181,135 +179,139 @@ Nodes (25): name, runs-on, steps, GEXCEL_EXTERNAL, name, needs, runs-on, steps (
 
 ### Community 18 - "Value"
 Cohesion: 0.17
-Nodes (7): Context, binaryScalar(), each(), fnCount(), fnIs(), Ref(), Formula engine
-
-### Community 19 - "Workbook"
-Cohesion: 0.08
-Nodes (12): main(), Workbook, New(), NewEmpty(), Open(), OpenBytes(), OpenStream(), TestCellImage() (+4 more)
+Nodes (7): Context, binaryScalar(), fnCount(), fnIs(), Err(), FromModel(), Ref()
 
 ### Community 20 - "Fill"
-Cohesion: 0.13
-Nodes (7): builtinStyleID(), fillKey(), NewStyles(), BuiltinNumFmtID(), PatternType, Fill, TestNumFmt()
+Cohesion: 0.14
+Nodes (5): builtinStyleID(), fillKey(), BuiltinNumFmtID(), PatternType, Fill
 
 ### Community 22 - "testing.T"
-Cohesion: 0.15
-Nodes (24): TestParseRoundTrip(), ReadBytes(), FuzzRead(), roundTrip(), TestReadInlineStrings(), TestReadLimits(), TestRoundTripSample(), TestStream() (+16 more)
+Cohesion: 0.20
+Nodes (23): OpenBytes(), ReadBytes(), FuzzRead(), roundTrip(), TestReadInlineStrings(), TestReadLimits(), TestRoundTripSample(), TestStream() (+15 more)
 
 ### Community 24 - "packer"
-Cohesion: 0.16
-Nodes (9): SheetKind, Relative(), guidOf(), threadedID(), packer, richValueTypesXML(), orDefault(), invBool() (+1 more)
+Cohesion: 0.20
+Nodes (6): Relative(), guidOf(), threadedID(), packer, orDefault(), invBool()
 
 ### Community 25 - "Range"
-Cohesion: 0.09
-Nodes (18): Formula, FormulaKind, IgnoredError, AutoFilter, SortState, SortCondition, CellRange(), ColName() (+10 more)
+Cohesion: 0.13
+Nodes (8): Formula, FormulaKind, IgnoredError, AutoFilter, SortState, SortCondition, Range, NewRange()
 
 ### Community 26 - "Calculator"
-Cohesion: 0.15
-Nodes (9): Calculate(), NewCalculator(), splitSpec(), Calculator, cellKey, NewEvaluator(), FuzzParse(), Err() (+1 more)
+Cohesion: 0.23
+Nodes (3): splitSpec(), Calculator, cellKey
 
 ### Community 27 - ".Workbook"
-Cohesion: 0.10
-Nodes (4): Properties, ValidSheetName(), quoteSheet(), Validate()
+Cohesion: 0.07
+Nodes (5): DefinedName, Properties, ValidSheetName(), quoteSheet(), Validate()
 
 ### Community 28 - "codeql.yml"
 Cohesion: 0.11
 Nodes (17): runs-on, steps, jobs, analyze, name, on, pull_request, push (+9 more)
 
-### Community 29 - "Token"
-Cohesion: 0.11
-Nodes (26): TestPrefixes(), TestShift(), AddPrefixes(), IsDynamicArray(), StripPrefixes(), Shift(), shiftRef(), Token (+18 more)
-
 ### Community 30 - "New"
-Cohesion: 0.31
-Nodes (8): OpenReader(), StreamReader(), New(), Read(), TestCellImageUnsupportedFormat(), OpenStream(), TestStreamLargeSheet(), TestValidate()
+Cohesion: 0.38
+Nodes (6): main(), OpenReader(), StreamReader(), Read(), ReadFile(), OpenStream()
 
 ### Community 31 - "Func"
-Cohesion: 0.20
-Nodes (17): aggregator, Func, fnAndOr(), fnEvenOdd(), fnIfs(), fnLargeSmall(), fnMinMax(), fnParity() (+9 more)
+Cohesion: 0.17
+Nodes (20): aggregator, each(), Func, timePart(), fnAndOr(), fnEvenOdd(), fnIfs(), fnLargeSmall() (+12 more)
 
 ### Community 32 - "New"
-Cohesion: 0.25
-Nodes (8): New(), build(), TestAPIRoundTrip(), RGB(), Solid(), TestStyleMerge(), itoa(), TestQuickStart()
+Cohesion: 0.20
+Nodes (14): New(), New(), OpenBytes(), build(), TestAPIRoundTrip(), TestCellImage(), TestSheetManagement(), RGB() (+6 more)
 
-### Community 33 - "Style"
-Cohesion: 0.21
-Nodes (8): CellStyle, Styles, Gradient, GradientStop, GradientType, BuiltinNumFmt(), Style, vmlXML()
+### Community 33 - "Styles"
+Cohesion: 0.18
+Nodes (9): numberOrError(), CellStyle, RawXML, Styles, BuiltinNumFmt(), isAll(), IsDateFormat(), TestNumFmt() (+1 more)
+
+### Community 34 - "Writer"
+Cohesion: 0.13
+Nodes (5): Writer, NewWriter(), RelsXML(), Options, newPacker()
 
 ### Community 35 - "gexcel — Excel feature coverage"
-Cohesion: 0.20
-Nodes (8): Cells and data, Drawings, Formatting, gexcel — Excel feature coverage, Page setup, Pivot tables, Protection, Workbook
+Cohesion: 0.14
+Nodes (12): Development, Feature coverage, gexcel, License, Packages, Cells and data, Formatting, gexcel — Excel feature coverage (+4 more)
 
 ### Community 36 - "gexcel.go"
-Cohesion: 0.21
-Nodes (9): Permission, StreamFile(), TableNoFilter(), TableOption, TableStripes(), TableStyle(), TableTotals(), Stream (+1 more)
+Cohesion: 0.18
+Nodes (10): Permission, StreamFile(), TableNoFilter(), TableOption, TableStripes(), TableStyle(), TableTotals(), Stream (+2 more)
 
 ### Community 38 - "Cell"
-Cohesion: 0.14
-Nodes (8): SparklineGroup, Sparkline, Cell, MustCell(), NewCell(), ParseR1C1(), r1c1Part(), TestCells()
+Cohesion: 0.16
+Nodes (8): FuzzFormat(), CellRange(), Cell, NewCell(), ParseR1C1(), r1c1Part(), FuzzParse(), TestCells()
 
-### Community 39 - "ToValue"
-Cohesion: 0.17
-Nodes (4): ToValue(), IsErrorCode(), Rich(), ThemeColor()
+### Community 39 - "Color"
+Cohesion: 0.12
+Nodes (17): schemeColor(), ColorKind, Auto(), Color, Indexed(), RGBA(), TestColors(), ThemeColor() (+9 more)
 
-### Community 40 - "Border"
-Cohesion: 0.36
-Nodes (6): parseLine(), LineStyle, All(), Border, Line, Thin()
+### Community 40 - "Wrap"
+Cohesion: 0.28
+Nodes (8): NewEmpty(), Open(), OpenStream(), TestOpenSample(), Wrap(), needExternal(), TestExternalLibreOffice(), TestExternalOpenpyxl()
 
 ### Community 41 - "Workbook"
-Cohesion: 0.24
-Nodes (6): CalcProperties, RawXML, Workbook, WorkbookProtection, WorkbookView, sampleWorkbook()
+Cohesion: 0.21
+Nodes (8): Calculate(), NewCalculator(), NewEvaluator(), CalcProperties, NewSheet(), Workbook, WorkbookProtection, WorkbookView
 
 ### Community 42 - "CondFmtRule"
-Cohesion: 0.31
-Nodes (12): CfValueType, ColorScale, CondFmtOperator, CondFmtType, CustomIcon, CfValue, CondFmtRule, ConditionalFormat (+4 more)
+Cohesion: 0.33
+Nodes (11): CfValueType, ColorScale, CondFmtOperator, CondFmtType, CustomIcon, CfValue, CondFmtRule, ConditionalFormat (+3 more)
 
 ### Community 43 - "siXML"
 Cohesion: 0.12
 Nodes (13): TestBuilder(), Clean(), EscapeAttr(), EscapeText(), EscapeUnicode(), isHex4(), leftPad(), UnescapeUnicode() (+5 more)
 
-### Community 45 - "MustRange"
+### Community 44 - "CellImage"
 Cohesion: 0.29
-Nodes (8): mustRange(), TestCalculateWorkbook(), testWorkbook(), NewSheet(), OpenBytes(), MustRange(), TestStreamWriter(), TestWriteSample()
+Nodes (3): CellImage, SniffImage(), Drawings
+
+### Community 45 - "New"
+Cohesion: 0.25
+Nodes (11): mustRange(), TestCalculateWorkbook(), testWorkbook(), NewStyles(), New(), TestCellImageUnsupportedFormat(), MustRange(), TestRanges() (+3 more)
 
 ### Community 46 - "protect.go"
 Cohesion: 0.25
 Nodes (5): hashPassword(), HashPasswordWithSalt(), LegacyPasswordHash(), VerifyPassword(), TestPasswordHash()
 
-### Community 47 - "io.Writer"
-Cohesion: 0.15
-Nodes (11): NewWriter(), Development, Feature coverage, gexcel, License, Packages, Options, NewStreamWriter() (+3 more)
+### Community 47 - "StreamSheet"
+Cohesion: 0.23
+Nodes (4): SheetKind, StreamSheet, StreamWriter, sheetPartName()
 
 ### Community 48 - "sheetWriter"
-Cohesion: 0.33
+Cohesion: 0.39
 Nodes (4): hasAttr(), orWidth(), sheetWriter, intAttr()
 
 ### Community 49 - "each"
 Cohesion: 0.43
 Nodes (6): criterion, fnAverageIf(), fnCountIf(), fnSumIf(), parseCriterion(), wildcardMatch()
 
-### Community 50 - "Alignment"
-Cohesion: 0.14
-Nodes (7): Xf, HAlign, Alignment, Protection, mergeBorder(), mergeFont(), VAlign
+### Community 50 - "Style"
+Cohesion: 0.09
+Nodes (16): Xf, Gradient, GradientStop, GradientType, HAlign, LineStyle, All(), Alignment (+8 more)
 
-### Community 51 - "writer/richdata.go"
-Cohesion: 0.60
-Nodes (3): cellImageMedia, cellImages, cellImageValue
+### Community 51 - "ParseArea"
+Cohesion: 0.31
+Nodes (8): Area, allDigits(), NeedsQuote(), ParseArea(), ParseAreas(), QuoteSheet(), splitSheet(), TestAreas()
 
 ### Community 52 - "project.yml"
 Cohesion: 0.22
 Nodes (8): encoding, excluded_tools, ignore_all_files_in_gitignore, ignored_paths, initial_prompt, languages, project_name, read_only
 
+### Community 55 - "scanRange"
+Cohesion: 0.39
+Nodes (7): ColNumber(), isLetter(), scanCell(), scanRange(), scanWholeCols(), scanWholeRows(), TestColNames()
+
 ### Community 57 - "Anchor"
 Cohesion: 0.31
 Nodes (8): AnchorKind, Anchor, CellOffset, Shape, anchorStart(), chartAnchor(), markerXML(), xfrmXML()
 
-### Community 58 - "Table"
-Cohesion: 0.40
-Nodes (4): DefaultTableStyle(), Table, TableColumn, TableStyle
+### Community 58 - "ParseRange"
+Cohesion: 0.18
+Nodes (5): DefaultTableStyle(), Table, TableColumn, TableStyle, ParseRange()
 
-### Community 62 - "Comment"
-Cohesion: 0.40
-Nodes (3): CommentReply, RichRun, Comment
+### Community 62 - "Font"
+Cohesion: 0.14
+Nodes (9): Title, CommentReply, RichRun, Comment, Font, Underline, VertAlign, modelFontBold() (+1 more)
 
 ### Community 64 - "Image"
 Cohesion: 0.40
@@ -323,17 +325,17 @@ Nodes (3): imageSize(), sniffImage(), Image
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Sheet` connect `Sheet` to `ref.go`, `Sheet`, `chartWriter`, `Node`, `Builder`, `Cell`, `Value`, `NewBuilder`, `packer`, `Range`, `Calculator`, `Style`, `gexcel.go`, `Cell`, `Workbook`, `CondFmtRule`, `MustRange`, `io.Writer`, `sheetWriter`, `writer/richdata.go`, `Anchor`, `Table`, `Comment`, `Image`, `HeaderFooter`, `PageMargins`, `PageSetup`, `Hyperlink`?**
-  _High betweenness centrality (0.166) - this node is a cross-community bridge._
+- **Why does `Sheet` connect `Sheet` to `ref.go`, `Sheet`, `cell`, `chartWriter`, `Node`, `Builder`, `Cell`, `Value`, `NewBuilder`, `testing.T`, `packer`, `Range`, `Calculator`, `Styles`, `gexcel.go`, `Color`, `Workbook`, `CondFmtRule`, `StreamSheet`, `sheetWriter`, `Style`, `Anchor`, `ParseRange`, `SparklineGroup`, `Font`, `Image`, `HeaderFooter`, `PageMargins`, `PageSetup`?**
+  _High betweenness centrality (0.156) - this node is a cross-community bridge._
 - **Are the 95 inferred relationships involving `Num()` (e.g. with `binaryScalar()` and `.argOrZero()`) actually correct?**
   _`Num()` has 95 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `github.com/gsoultan/gexcel` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `ref.go` be split into smaller, more focused modules?**
-  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
-- **Why does `Sheet` connect `Sheet` to `Image`, `ref.go`, `cell`, `gexcel.go`, `HeaderFooter`, `Cell`, `PageMargins`, `Node`, `PageSetup`, `Sheet`, `Row`, `Row`, `ParseCell`, `Range`, `Table`, `.Workbook`?**
-  _High betweenness centrality (0.102) - this node is a cross-community bridge._
+  _Cohesion score 0.11951219512195121 - nodes in this community are weakly interconnected._
+- **Why does `Sheet` connect `Sheet` to `cell`, `chartWriter`, `Node`, `Sheet`, `Row`, `ParseCell`, `Range`, `.Workbook`, `Cell`, `Styles`, `gexcel.go`, `Color`, `Style`, `Row`, `.SetStyle`, `ParseRange`, `SparklineGroup`, `Image`, `HeaderFooter`, `PageMargins`, `PageSetup`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
 - **Should `Evaluator` be split into smaller, more focused modules?**
-  _Cohesion score 0.11018518518518519 - nodes in this community are weakly interconnected._
-- **Why does `cell` connect `cell` to `ref.go`, `gexcel.go`, `.edit`, `chartWriter`, `ToValue`, `Border`, `Hyperlink`, `CellImage`, `Cell`, `Alignment`, `Fill`, `Comment`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+  _Cohesion score 0.11170886075949367 - nodes in this community are weakly interconnected._
+- **Why does `cell` connect `cell` to `Styles`, `gexcel.go`, `.edit`, `Color`, `CellImage`, `Cell`, `Style`, `Fill`, `Font`?**
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
