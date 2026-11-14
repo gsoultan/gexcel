@@ -51,6 +51,10 @@ const (
 	CTPivotCacheRec    = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"
 	CTMetadata         = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"
 	CTRichValue        = "application/vnd.ms-excel.richvalue+xml"
+	CTRdRichValue      = "application/vnd.ms-excel.rdrichvalue+xml"
+	CTRdRichValueStruc = "application/vnd.ms-excel.rdrichvaluestructure+xml"
+	CTRdRichValueTypes = "application/vnd.ms-excel.rdrichvaluetypes+xml"
+	CTRichValueRel     = "application/vnd.ms-excel.richvaluerel+xml"
 	CTConnections      = "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml"
 	CTCustomXML        = "application/vnd.openxmlformats-officedocument.customXmlProperties+xml"
 	CTSlicerCache      = "application/vnd.ms-excel.slicerCache+xml"
@@ -96,6 +100,13 @@ const (
 	RelSlicerCache      = "http://schemas.microsoft.com/office/2007/relationships/slicerCache"
 	RelSlicer           = "http://schemas.microsoft.com/office/2007/relationships/slicer"
 	RelRichValue        = "http://schemas.microsoft.com/office/2017/06/relationships/richValue"
+	RelRdRichValue      = "http://schemas.microsoft.com/office/2017/06/relationships/rdRichValue"
+	RelRdRichValueStruc = "http://schemas.microsoft.com/office/2017/06/relationships/rdRichValueStructure"
+	RelRdRichValueTypes = "http://schemas.microsoft.com/office/2017/06/relationships/rdRichValueTypes"
+	RelRichValueRel     = "http://schemas.microsoft.com/office/2022/10/relationships/richValueRel"
+	// RelRichDataPrefix starts every other rich data relationship type
+	// (arrays, supporting property bags, rich styles, web images).
+	RelRichDataPrefix = "http://schemas.microsoft.com/office/2017/06/relationships/rd"
 )
 
 // ErrNotPackage is returned when the input is not an OPC zip package.
@@ -493,6 +504,28 @@ func (w *Writer) RelIDByType(from, relType string, n int) string {
 			}
 			n--
 		}
+	}
+	return ""
+}
+
+// SniffImage returns the format name of image data from its magic bytes,
+// or "" when it is not recognised.
+func SniffImage(data []byte) string {
+	switch {
+	case len(data) >= 8 && string(data[:8]) == "\x89PNG\r\n\x1a\n":
+		return "png"
+	case len(data) >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF:
+		return "jpeg"
+	case len(data) >= 6 && (string(data[:6]) == "GIF87a" || string(data[:6]) == "GIF89a"):
+		return "gif"
+	case len(data) >= 2 && data[0] == 'B' && data[1] == 'M':
+		return "bmp"
+	case len(data) >= 4 && (string(data[:4]) == "II*\x00" || string(data[:4]) == "MM\x00*"):
+		return "tiff"
+	case len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP":
+		return "webp"
+	case len(data) >= 4 && string(data[:4]) == "\x00\x00\x01\x00":
+		return "ico"
 	}
 	return ""
 }

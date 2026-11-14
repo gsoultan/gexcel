@@ -18,6 +18,7 @@ import (
 	"github.com/gsoultan/gexcel/format"
 	"github.com/gsoultan/gexcel/formula"
 	"github.com/gsoultan/gexcel/model"
+	"github.com/gsoultan/gexcel/ooxml"
 	"github.com/gsoultan/gexcel/ref"
 	"github.com/gsoultan/gexcel/style"
 )
@@ -36,7 +37,9 @@ func (c *cell) Col() int           { return c.m.Col }
 func (c *cell) Ref() string        { return ref.Cell{Row: c.m.Row, Col: c.m.Col}.String() }
 func (c *cell) StyleID() int       { return c.m.StyleID }
 func (c *cell) Value() model.Value { return c.m.Value }
-func (c *cell) IsEmpty() bool      { return c.m.Value.IsEmpty() && c.m.Formula == nil }
+func (c *cell) IsEmpty() bool {
+	return c.m.Value.IsEmpty() && c.m.Formula == nil && c.m.Image == nil
+}
 
 func (c *cell) Formula() string {
 	if c.m.Formula == nil {
@@ -51,7 +54,7 @@ func (c *cell) Set(v any) Cell {
 	if c.err != nil {
 		return c
 	}
-	c.m.Formula = nil
+	c.m.Formula, c.m.Image = nil, nil
 	val, ok := ToValue(v, c.sh.wb.m.Date1904)
 	if !ok {
 		c.m.Value = model.String(fmt.Sprint(v))
@@ -159,6 +162,7 @@ func (c *cell) SetFormula(f string) Cell {
 	if formula.IsDynamicArray(f) {
 		return c.SetArrayFormula(f, c.Ref(), true)
 	}
+	c.m.Image = nil
 	c.m.Formula = &model.Formula{Text: f}
 	c.m.Value = model.Value{}
 	return c
@@ -172,6 +176,7 @@ func (c *cell) SetArrayFormula(f, rng string, dynamic bool) Cell {
 	if err != nil {
 		r = ref.Range{From: ref.Cell{Row: c.m.Row, Col: c.m.Col}, To: ref.Cell{Row: c.m.Row, Col: c.m.Col}}
 	}
+	c.m.Image = nil
 	c.m.Formula = &model.Formula{Text: strings.TrimPrefix(strings.TrimSpace(f), "="), Kind: model.FormulaArray, Ref: r.Normalize(), Master: true, Dynamic: dynamic}
 	c.m.Value = model.Value{}
 	return c
@@ -192,15 +197,38 @@ func (c *cell) SetRich(runs ...model.RichRun) Cell {
 	if c.err != nil {
 		return c
 	}
-	c.m.Formula = nil
+	c.m.Formula, c.m.Image = nil, nil
 	c.m.Value = model.Rich(runs...)
 	return c
 }
 
 func (c *cell) Clear() Cell {
-	c.m.Formula = nil
+	c.m.Formula, c.m.Image = nil, nil
 	c.m.Value = model.Value{}
 	return c
+}
+
+func (c *cell) SetImage(img model.CellImage) Cell {
+	if c.err != nil {
+		return c
+	}
+	if len(img.Data) == 0 {
+		c.m.Image = nil
+		return c
+	}
+	if img.Format == "" {
+		img.Format = ooxml.SniffImage(img.Data)
+	}
+	c.m.Formula, c.m.Value = nil, model.Value{}
+	c.m.Image = &img
+	return c
+}
+
+func (c *cell) Image() (model.CellImage, bool) {
+	if c.m.Image == nil {
+		return model.CellImage{}, false
+	}
+	return *c.m.Image, true
 }
 
 func (c *cell) String() string { return c.m.Value.Text() }

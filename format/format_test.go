@@ -3,6 +3,8 @@
 package format
 
 import (
+	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -188,8 +190,24 @@ func TestText(t *testing.T) {
 	}
 }
 
+// A slash after a decimal point or an exponent is not a fraction: the parser
+// used to take numerator digits that were not integer placeholders and panic
+// (found by FuzzFormat).
+func TestSlashAfterDecimalIsNotAFraction(t *testing.T) {
+	for _, code := range []string{"0.00/0", "0.0E+00/00", ".000/0", "0.0#/#?"} {
+		if Parse(code).Sections[0].Fraction {
+			t.Errorf("%q parsed as a fraction", code)
+		}
+		Number(1.5, code, false)
+		Number(-1.5, code, true)
+	}
+	if got := Number(1.5, "# ?/?", false); got != "1 1/2" {
+		t.Errorf(`Number(1.5, "# ?/?") = %q`, got)
+	}
+}
+
 func FuzzFormat(f *testing.F) {
-	for _, s := range []string{"0.00", "#,##0", "yyyy-mm-dd h:mm:ss", "# ?/?", "[>5]0;[<0]-0;0", `"a"@`, "0.00E+00", "[h]:mm", "General"} {
+	for _, s := range []string{"0.00/0", "0.00", "#,##0", "yyyy-mm-dd h:mm:ss", "# ?/?", "[>5]0;[<0]-0;0", `"a"@`, "0.00E+00", "[h]:mm", "General"} {
 		f.Add(s, 1234.5678)
 	}
 	f.Fuzz(func(t *testing.T, code string, v float64) {
@@ -197,4 +215,49 @@ func FuzzFormat(f *testing.F) {
 		Number(v, code, true)
 		Text("x", code)
 	})
+}
+
+// bestFraction must agree with an exhaustive search and must not depend on
+// the size of the denominator (FuzzFormat found "0/0000000000" taking minutes).
+func TestBestFraction(t *testing.T) {
+	brute := func(v float64, maxDen int) float64 {
+		best := v
+		for d := 1; d <= maxDen; d++ {
+			if e := math.Abs(v - math.Round(v*float64(d))/float64(d)); e < best {
+				best = e
+			}
+		}
+		return best
+	}
+	for _, maxDen := range []int{1, 9, 99, 999} {
+		for i := 0; i < 2000; i++ {
+			v := float64(i) / 2000
+			if i%3 == 0 {
+				v = math.Mod(float64(i)*math.Phi, 1)
+			}
+			n, d := bestFraction(v, maxDen)
+			if d < 1 || d > maxDen || n < 0 || n > d {
+				t.Fatalf("bestFraction(%v, %d) = %d/%d", v, maxDen, n, d)
+			}
+			if got, want := math.Abs(v-float64(n)/float64(d)), brute(v, maxDen); got > want+1e-12 {
+				t.Fatalf("bestFraction(%v, %d) = %d/%d, off by %g; the best is off by %g", v, maxDen, n, d, got, want)
+			}
+		}
+	}
+	for v, want := range map[float64][2]int{0: {0, 1}, 0.5: {1, 2}, 0.75: {3, 4}, 1.0 / 3: {1, 3}, 0.9999: {1, 1}, 0.0001: {0, 1}} {
+		if n, d := bestFraction(v, 9); [2]int{n, d} != want {
+			t.Errorf("bestFraction(%v, 9) = %d/%d, want %d/%d", v, n, d, want[0], want[1])
+		}
+	}
+	// No integer placeholders: an improper fraction.
+	if n, d := bestFraction(2.75, 9); n != 11 || d != 4 {
+		t.Errorf("bestFraction(2.75, 9) = %d/%d", n, d)
+	}
+	for _, code := range []string{"0/0000000000", "0/", "?/?"} {
+		Number(2285.7539039999997, code, false)
+		Number(1e300, code, false)
+	}
+	if got := Number(0.5, "# ?/"+strings.Repeat("?", 400), false); !strings.Contains(got, "1/2") {
+		t.Errorf("400 denominator digits = %q", got)
+	}
 }

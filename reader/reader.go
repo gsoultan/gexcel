@@ -32,12 +32,17 @@ type Options struct {
 	Sheets []string
 	// Strict makes malformed XML an error instead of best-effort parsing.
 	Strict bool
+	// Password opens a file saved with "Encrypt with Password" (ECMA-376
+	// agile encryption). Without it an encrypted file is ErrEncrypted; with
+	// the wrong one ErrWrongPassword.
+	Password string
 }
 
 // Errors.
 var (
 	ErrNotSpreadsheet = errors.New("reader: not a SpreadsheetML package")
-	ErrEncrypted      = errors.New("reader: workbook is encrypted (CFB/OLE container); decryption is not supported yet")
+	ErrEncrypted      = errors.New("reader: workbook is encrypted; open it with Options.Password")
+	ErrWrongPassword  = ooxml.ErrWrongPassword
 	ErrLimit          = errors.New("reader: limit exceeded")
 )
 
@@ -51,8 +56,22 @@ func Read(r io.ReaderAt, size int64, opts ...Options) (*model.Workbook, error) {
 		o.MaxPartSize = 1 << 30
 	}
 	var head [8]byte
-	if n, _ := r.ReadAt(head[:], 0); n >= 8 && bytes.Equal(head[:8], []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}) {
-		return nil, ErrEncrypted
+	if n, _ := r.ReadAt(head[:], 0); n >= 8 && ooxml.IsCFB(head[:]) {
+		if o.Password == "" {
+			return nil, ErrEncrypted
+		}
+		if size > o.MaxPartSize {
+			return nil, fmt.Errorf("%w: encrypted file larger than MaxPartSize", ErrLimit)
+		}
+		data := make([]byte, size)
+		if _, err := r.ReadAt(data, 0); err != nil && err != io.EOF {
+			return nil, err
+		}
+		pkg, err := ooxml.Decrypt(data, o.Password)
+		if err != nil {
+			return nil, err
+		}
+		r, size = bytes.NewReader(pkg), int64(len(pkg))
 	}
 	pr, err := ooxml.Open(r, size)
 	if err != nil {
@@ -96,6 +115,8 @@ type docReader struct {
 	used map[string]bool
 	// streaming: worksheet parts by sheet name, parsed later on demand
 	skipSheets bool
+	// cellImages maps a value metadata index (vm) to the picture in the cell.
+	cellImages map[int]*model.CellImage
 	sheetParts map[string]string
 }
 
@@ -153,6 +174,7 @@ func (d *docReader) read() error {
 			d.use(name)
 		}
 	}
+	d.readCellImages(wbRels)
 	if rel, ok := ooxml.FindRel(wbRels, ooxml.RelPersons); ok {
 		d.use(ooxml.Resolve(d.wbPart, rel.Target))
 	}
@@ -174,6 +196,7 @@ func (d *docReader) read() error {
 			}
 		case ooxml.RelRichValue:
 			if raw := d.rawPart(name); raw != nil {
+				raw.RelType = rel.Type
 				d.wb.RichData = append(d.wb.RichData, raw)
 			}
 		case ooxml.RelWorksheet, ooxml.RelChartsheet, ooxml.RelDialogsheet, ooxml.RelMacrosheet, ooxml.RelStyles, ooxml.RelTheme,
@@ -182,7 +205,14 @@ func (d *docReader) read() error {
 			if rel.TargetMode == "External" {
 				continue
 			}
-			if raw := d.rawPart(name); raw != nil {
+			raw := d.rawPart(name)
+			if raw == nil {
+				continue
+			}
+			raw.RelType = rel.Type
+			if isRichDataRel(rel.Type) {
+				d.wb.RichData = append(d.wb.RichData, raw)
+			} else {
 				d.wb.Preserved = append(d.wb.Preserved, raw)
 			}
 		}

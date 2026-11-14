@@ -6,6 +6,7 @@
 package writer
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -34,6 +35,10 @@ type Options struct {
 	// NoFullCalcOnLoad leaves calcPr fullCalcOnLoad unset: cached formula
 	// values are trusted as they are.
 	NoFullCalcOnLoad bool
+	// Password encrypts the file (ECMA-376 agile encryption, AES-256 with
+	// SHA-512) so that it opens only with this password. The package is
+	// built in memory first, so streaming output is not possible with it.
+	Password string
 }
 
 // Errors.
@@ -53,6 +58,15 @@ func Write(wb *model.Workbook, w io.Writer, opts ...Options) error {
 	}
 	if err := Validate(wb); err != nil {
 		return err
+	}
+	if o.Password != "" {
+		var buf bytes.Buffer
+		plain := o
+		plain.Password = ""
+		if err := Write(wb, &buf, plain); err != nil {
+			return err
+		}
+		return ooxml.Encrypt(w, buf.Bytes(), o.Password)
 	}
 	p := newPacker(wb, w, o)
 	for i, sh := range wb.Sheets {
@@ -108,6 +122,7 @@ type packer struct {
 	persons                                                      map[string]string // author -> person id
 	personOrder                                                  []string
 	hasDynamic                                                   bool
+	cellImages                                                   cellImages
 	workbookRels                                                 []ooxml.Relationship
 	extraDefinedNames                                            []model.DefinedName
 }
@@ -243,11 +258,17 @@ func (p *packer) finish() error {
 		}
 		p.pw.Rel("xl/workbook.xml", ooxml.RelSharedStrings, "sharedStrings.xml", "")
 	}
-	// Dynamic array metadata.
-	if p.hasDynamic || len(wb.Metadata) > 0 {
+	// Pictures in cells.
+	if err := p.writeCellImages(); err != nil {
+		return err
+	}
+	// Dynamic array and rich value metadata. Pictures in cells need their
+	// value-metadata blocks, so the part is regenerated when there are any.
+	nImages := len(p.cellImages.values)
+	if p.hasDynamic || nImages > 0 || len(wb.Metadata) > 0 {
 		data := wb.Metadata
-		if len(data) == 0 {
-			data = metadataXML()
+		if len(data) == 0 || nImages > 0 {
+			data = metadataXML(p.hasDynamic, nImages)
 		}
 		if err := p.pw.Add("xl/metadata.xml", ooxml.CTMetadata, data); err != nil {
 			return err
@@ -330,7 +351,11 @@ func (p *packer) finish() error {
 		if err := p.writeRawRelated(raw.Name, raw); err != nil {
 			return err
 		}
-		p.pw.Rel("xl/workbook.xml", ooxml.RelRichValue, ooxml.Relative("xl/workbook.xml", raw.Name), "")
+		relType := raw.RelType
+		if relType == "" {
+			relType = ooxml.RelRichValue
+		}
+		p.pw.Rel("xl/workbook.xml", relType, ooxml.Relative("xl/workbook.xml", raw.Name), "")
 	}
 	// Workbook.
 	ct := ooxml.CTWorkbook
@@ -378,7 +403,7 @@ func relTypeForPreserved(raw *model.RawPart) string {
 	if strings.HasPrefix(raw.Name, "customXml/item") && !strings.Contains(raw.Name, "Props") {
 		return ooxml.RelCustomXML
 	}
-	return ""
+	return raw.RelType
 }
 
 // workbookXML builds xl/workbook.xml.
@@ -613,12 +638,4 @@ func externalLinkXML(el *model.ExternalLink) []byte {
 	}
 	b.End().End()
 	return b.Bytes()
-}
-
-// metadataXML is the xl/metadata.xml part that marks dynamic array formulas.
-func metadataXML() []byte {
-	return []byte(ooxml.Header + `<metadata xmlns="` + ooxml.NSMain + `" xmlns:xda="` + ooxml.NSXDA + `">` +
-		`<metadataTypes count="1"><metadataType name="XLDAPR" minSupportedVersion="120000" copy="1" pasteAll="1" pasteValues="1" merge="1" splitFirst="1" rowColShift="1" clearFormats="1" clearComments="1" assign="1" coerce="1" cellMeta="1"/></metadataTypes>` +
-		`<futureMetadata name="XLDAPR" count="1"><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><xda:dynamicArrayProperties fDynamic="1" fCollapsed="0"/></ext></extLst></bk></futureMetadata>` +
-		`<cellMetadata count="1"><bk><rc t="1" v="0"/></bk></cellMetadata></metadata>`)
 }

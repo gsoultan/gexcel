@@ -242,7 +242,16 @@ type Cell interface {
 	SetFormulaResult(formula string, result any) Cell
 	// SetRich writes rich text runs.
 	SetRich(runs ...model.RichRun) Cell
-	// Clear removes the value and formula, keeping the style.
+	// SetImage places a picture in the cell (Excel 365 "Place in Cell"):
+	// the picture is the cell's value, scaled to fit, and moves, sorts and
+	// filters with the cell. It replaces the value and formula; empty Data
+	// removes the picture. Applications without rich values (Excel 2019
+	// and earlier, LibreOffice) show #VALUE! in the cell; use
+	// Sheet.AddImage for a floating picture that every application shows.
+	SetImage(img model.CellImage) Cell
+	// Image returns the picture placed in the cell, if any.
+	Image() (model.CellImage, bool)
+	// Clear removes the value, formula and picture, keeping the style.
 	Clear() Cell
 
 	// Value is the typed cell value (cached result for formulas).

@@ -12,6 +12,7 @@ package style
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -380,12 +381,139 @@ func (f Fill) Equal(o Fill) bool {
 // Key returns a string that identifies the style's value, for maps.
 func (s Style) Key() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%+v|%+v|%+v|%+v|%+v|%s|%s|%t|%t", s.Font, s.Border, s.Alignment, s.Protection, s.Fill.Pattern, s.NumFmt, s.Named, s.QuotePrefix, s.PivotButton)
-	fmt.Fprintf(&b, "|%+v|%+v", s.Fill.Foreground, s.Fill.Background)
-	if s.Fill.Gradient != nil {
-		fmt.Fprintf(&b, "|%+v", *s.Fill.Gradient)
+	b.Grow(256)
+	s.Font.writeKey(&b)
+	b.WriteByte('|')
+	s.Border.writeKey(&b)
+	b.WriteByte('|')
+	s.Alignment.writeKey(&b)
+	b.WriteByte('|')
+	writeBool(&b, s.Protection.Unlocked)
+	writeBool(&b, s.Protection.Hidden)
+	b.WriteByte('|')
+	b.WriteString(string(s.Fill.Pattern))
+	b.WriteByte('|')
+	b.WriteString(s.NumFmt)
+	b.WriteByte('|')
+	b.WriteString(s.Named)
+	b.WriteByte('|')
+	writeBool(&b, s.QuotePrefix)
+	writeBool(&b, s.PivotButton)
+	b.WriteByte('|')
+	s.Fill.Foreground.writeKey(&b)
+	b.WriteByte('|')
+	s.Fill.Background.writeKey(&b)
+	if g := s.Fill.Gradient; g != nil {
+		b.WriteByte('|')
+		b.WriteString(string(g.Type))
+		b.WriteByte(' ')
+		writeFloat(&b, g.Degree)
+		for _, f := range [4]float64{g.Left, g.Right, g.Top, g.Bottom} {
+			b.WriteByte(' ')
+			writeFloat(&b, f)
+		}
+		for _, st := range g.Stops {
+			b.WriteByte(';')
+			writeFloat(&b, st.Position)
+			b.WriteByte(' ')
+			st.Color.writeKey(&b)
+		}
 	}
 	return b.String()
+}
+
+// The writeKey methods serialise every field of a style part into b. They
+// are the hot path of style deduplication (one call per styled cell), so
+// they avoid fmt.
+
+func writeBool(b *strings.Builder, v bool) {
+	if v {
+		b.WriteByte('1')
+	} else {
+		b.WriteByte('0')
+	}
+}
+
+func writeInt(b *strings.Builder, v int) {
+	var buf [20]byte
+	b.Write(strconv.AppendInt(buf[:0], int64(v), 10))
+}
+
+func writeFloat(b *strings.Builder, v float64) {
+	var buf [32]byte
+	b.Write(strconv.AppendFloat(buf[:0], v, 'g', -1, 64))
+}
+
+func (c Color) writeKey(b *strings.Builder) {
+	writeInt(b, int(c.Kind))
+	b.WriteByte(',')
+	b.WriteString(c.ARGB)
+	b.WriteByte(',')
+	writeInt(b, c.Theme)
+	b.WriteByte(',')
+	writeFloat(b, c.Tint)
+	b.WriteByte(',')
+	writeInt(b, c.Indexed)
+}
+
+func (f Font) writeKey(b *strings.Builder) {
+	b.WriteString(f.Name)
+	b.WriteByte(',')
+	writeFloat(b, f.Size)
+	b.WriteByte(',')
+	writeBool(b, f.Bold)
+	writeBool(b, f.Italic)
+	writeBool(b, f.Strike)
+	writeBool(b, f.Outline)
+	writeBool(b, f.Shadow)
+	writeBool(b, f.Condense)
+	writeBool(b, f.Extend)
+	b.WriteByte(',')
+	b.WriteString(string(f.Underline))
+	b.WriteByte(',')
+	f.Color.writeKey(b)
+	b.WriteByte(',')
+	b.WriteString(string(f.VertAlign))
+	b.WriteByte(',')
+	writeInt(b, f.Family)
+	b.WriteByte(',')
+	writeInt(b, f.Charset)
+	b.WriteByte(',')
+	b.WriteString(f.Scheme)
+}
+
+func (l Line) writeKey(b *strings.Builder) {
+	b.WriteString(string(l.Style))
+	b.WriteByte(' ')
+	l.Color.writeKey(b)
+}
+
+func (bd Border) writeKey(b *strings.Builder) {
+	for _, l := range [5]Line{bd.Left, bd.Right, bd.Top, bd.Bottom, bd.Diagonal} {
+		l.writeKey(b)
+		b.WriteByte(',')
+	}
+	writeBool(b, bd.DiagonalUp)
+	writeBool(b, bd.DiagonalDown)
+	writeBool(b, bd.Outline)
+}
+
+func (a Alignment) writeKey(b *strings.Builder) {
+	b.WriteString(string(a.Horizontal))
+	b.WriteByte(',')
+	b.WriteString(string(a.Vertical))
+	b.WriteByte(',')
+	writeBool(b, a.WrapText)
+	writeBool(b, a.ShrinkToFit)
+	writeBool(b, a.JustifyLastLine)
+	b.WriteByte(',')
+	writeInt(b, a.Indent)
+	b.WriteByte(',')
+	writeInt(b, a.RelativeIndent)
+	b.WriteByte(',')
+	writeInt(b, a.TextRotation)
+	b.WriteByte(',')
+	writeInt(b, a.ReadingOrder)
 }
 
 // Merge returns s with every non-zero part of o applied on top (a

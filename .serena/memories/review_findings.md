@@ -20,3 +20,16 @@ Open items found while building and validating; pick these up in follow-up PRs.
 - Chart reading maps only the common cases of overlay/secondary-axis combos; exotic axis groups
   survive through `Chart.Raw` when the chart is not edited, but any edit regenerates from the model.
 - LibreOffice before 24.8 lacks XLOOKUP/SORT/FILTER; external tests avoid those functions.
+- Fixed 2026-11-14: rich data parts linked with the real relationship types (`rdRichValue`,
+  `rdRichValueStructure`, `rdRichValueTypes`, `richValueRel`) used to be written back without a
+  workbook relationship, so data types and in-cell pictures were silently orphaned on a round
+  trip; `RawPart.RelType` now carries the type. The reader also dropped the dynamic-array flag of
+  `cm="1"` cells when the `<f>` element followed (files from Excel/XlsxWriter), fixed too.
+- Pictures in cells are verified against XlsxWriter output and by round trip, not in real Excel.
+  The formula engine sees a picture cell as empty, where Excel sees a rich value.
+- The function count is 205 (`len(formula.Functions())`), not the ~230 quoted earlier.
+- FuzzFormat (CI smoke) found two faults in `format`: `0.00/0` panicked (a slash after a decimal
+  point or exponent was parsed as a fraction and took numerator digits that were not integer
+  placeholders; such a slash is now a literal), and a long denominator such as `0/0000000000`
+  made `bestFraction` scan up to 10^n candidates (now a continued-fraction search, denominator
+  digits capped at 15). Both inputs are kept in `format/testdata/fuzz/FuzzFormat/`.

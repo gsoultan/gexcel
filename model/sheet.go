@@ -140,7 +140,10 @@ type RawPart struct {
 	Name        string // part name, e.g. "xl/chartsheets/sheet1.xml"
 	ContentType string
 	Data        []byte
-	Rels        []Relationship
+	// RelType is the type of the relationship that pointed at the part,
+	// kept so that the writer can link it again.
+	RelType string
+	Rels    []Relationship
 	// Related holds parts reached through Rels (drawings, media), keyed by part name.
 	Related map[string]*RawPart
 }

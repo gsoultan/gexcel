@@ -253,6 +253,18 @@ type Image struct {
 	ID int
 }
 
+// CellImage is a picture stored in a cell (Excel 365 "Place in Cell"), as
+// opposed to an Image, which floats over the grid. Excel scales it to fit
+// the cell, keeping the aspect ratio.
+type CellImage struct {
+	Format string // "png", "jpeg", "gif", "bmp", "tiff", "webp", ...; sniffed from Data when empty
+	Data   []byte
+	// AltText is the alternative text read by screen readers.
+	AltText string
+	// Decorative marks a picture that carries no information (no alt text).
+	Decorative bool
+}
+
 // DefinedName is a workbook or sheet-scoped name.
 type DefinedName struct {
 	Name     string
