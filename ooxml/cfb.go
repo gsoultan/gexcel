@@ -40,6 +40,11 @@ func IsCFB(data []byte) bool {
 	return len(data) >= 8 && string(data[:8]) == string(cfbSignature)
 }
 
+// MaxCFBStreamSize bounds one stream written by WriteCFB: the format
+// addresses sectors with 32-bit numbers, and the bound keeps every size
+// computation below well inside int range.
+const MaxCFBStreamSize = 1 << 31
+
 // CFBStream is one named stream of a compound file.
 type CFBStream struct {
 	Name string
@@ -68,6 +73,9 @@ func WriteCFB(w io.Writer, streams []CFBStream) error {
 	for _, s := range streams {
 		if len(s.Name) == 0 || len(s.Name) > 31 {
 			return fmt.Errorf("cfb: invalid stream name %q", s.Name)
+		}
+		if len(s.Data) > MaxCFBStreamSize {
+			return fmt.Errorf("cfb: stream %q exceeds %d bytes", s.Name, MaxCFBStreamSize)
 		}
 		e := &cfbEntry{name: s.Name, typ: cfbObjStream, size: uint64(len(s.Data)), stream: s.Data}
 		entries = append(entries, e)

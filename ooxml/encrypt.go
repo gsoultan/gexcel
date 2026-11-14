@@ -55,6 +55,9 @@ func Encrypt(w io.Writer, pkg []byte, password string) error {
 	if password == "" {
 		return errors.New("ooxml: empty password")
 	}
+	if len(pkg) > MaxCFBStreamSize-encSegmentSize {
+		return fmt.Errorf("ooxml: package of %d bytes is too large to encrypt", len(pkg))
+	}
 	var keySalt, pwSalt, verifierInput [encSaltSize]byte
 	secret := make([]byte, encKeyBytes)
 	hmacKey := make([]byte, encHashSize)
@@ -99,7 +102,7 @@ func Encrypt(w io.Writer, pkg []byte, password string) error {
 	if err != nil {
 		return err
 	}
-	infoStream := make([]byte, 8, 8+len(xmlBytes))
+	infoStream := make([]byte, 8)
 	binary.LittleEndian.PutUint16(infoStream[0:], 4) // version major
 	binary.LittleEndian.PutUint16(infoStream[2:], 4) // version minor: agile
 	binary.LittleEndian.PutUint32(infoStream[4:], 0x40)
@@ -289,9 +292,14 @@ func fitBlock(b []byte, n int) []byte {
 	return out
 }
 
+// pad16 zero-pads b to a whole number of AES blocks. Callers pass at most one
+// 4096-byte segment or a hash; anything larger is a bug.
 func pad16(b []byte) []byte {
 	if len(b)%encBlockSize == 0 {
 		return b
+	}
+	if len(b) > encSegmentSize {
+		panic("ooxml: pad16 called with more than one segment")
 	}
 	out := make([]byte, (len(b)/encBlockSize+1)*encBlockSize)
 	copy(out, b)
