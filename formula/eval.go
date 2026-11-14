@@ -26,6 +26,13 @@ type Context interface {
 	SheetNames() []string
 }
 
+// Extenter is an optional Context method. Extent returns the last row and
+// column of a sheet that hold a cell; a reference that reaches past them
+// (a whole column, say) is read only up to there, since the rest is empty.
+type Extenter interface {
+	Extent(sheet string) (rows, cols int, ok bool)
+}
+
 // Evaluator evaluates parsed formulas against a Context.
 type Evaluator struct {
 	ctx   Context
@@ -106,7 +113,19 @@ func (e *Evaluator) toArray(v Value) Value {
 	r := v.Range
 	rows := r.Rows()
 	cols := r.Cols()
-	if rows*cols > 10_000_000 {
+	// Cells past the last used row and column are empty: leave them out, so
+	// that A:A costs what the data costs and not a million cells.
+	if x, ok := e.ctx.(Extenter); ok {
+		sheet := v.Sheet
+		if sheet == "" {
+			sheet = e.sheet
+		}
+		if maxRow, maxCol, ok := x.Extent(sheet); ok {
+			rows = min(rows, max(1, maxRow-r.From.Row+1))
+			cols = min(cols, max(1, maxCol-r.From.Col+1))
+		}
+	}
+	if rows*cols > maxArrayCells {
 		return errNum
 	}
 	out := make([][]Value, rows)
@@ -132,6 +151,9 @@ func (e *Evaluator) cellValue(sheet string, row, col int) Value {
 	}
 	return v
 }
+
+// maxArrayCells caps the cells one reference may expand to.
+const maxArrayCells = 10_000_000
 
 const maxDepth = 256
 

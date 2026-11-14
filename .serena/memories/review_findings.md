@@ -33,3 +33,12 @@ Open items found while building and validating; pick these up in follow-up PRs.
   placeholders; such a slash is now a literal), and a long denominator such as `0/0000000000`
   made `bestFraction` scan up to 10^n candidates (now a continued-fraction search, denominator
   digits capped at 15). Both inputs are kept in `format/testdata/fuzz/FuzzFormat/`.
+- FuzzParse (10 minute run) killed its worker on `XLOOKUP(,AF:X,A2:A7)`: `toArray` built every
+  cell of a whole-column reference (9.4M values). References are now read only up to the sheet's
+  last used row and column (`formula.Extenter`, implemented by the Calculator; COUNTBLANK adds the
+  cells left out so its answer is unchanged). Probing the neighbours found more unbounded work,
+  fixed with it: NETWORKDAYS/WORKDAY walked day by day over any span (now #NUM! outside Excel's
+  dates 0..2958465), FIXED/DOLLAR built a format with any number of decimals (now #VALUE! above
+  127, as Excel), and `Parse` accepted formulas of any length, so tree depth and evaluator
+  recursion were unbounded (now `formula.MaxLength` = 8192 characters, Excel's limit).
+  Whole-row references such as `1:1` still do not parse (#REF!).
