@@ -208,6 +208,8 @@ func (p *sheetParser) parseSheetData() error {
 				}
 				f.CalcAlways = ooxml.ParseBool(ooxml.Attr(t, "ca"))
 				if cell != nil {
+					// cm on the cell marks a dynamic array formula.
+					f.Dynamic = cell.Formula != nil && cell.Formula.Dynamic && f.Kind == model.FormulaArray
 					cell.Formula = f
 				}
 			case "v":
@@ -264,9 +266,6 @@ func (p *sheetParser) parseSheetData() error {
 							cell.Formula.Master = true
 							p.shared[cell.Formula.SharedIndex] = cell
 						}
-					}
-					if cell.Formula.Kind == model.FormulaArray && cell.Formula.Dynamic {
-						// marked by cm attribute
 					}
 				}
 			case "v":
@@ -355,6 +354,10 @@ func (p *sheetParser) cellStart(t xml.StartElement, row *model.Row) (*model.Cell
 	cell.StyleID = ooxml.ParseInt(ooxml.Attr(t, "s"), 0)
 	cell.ShowPhonetic = ooxml.ParseBool(ooxml.Attr(t, "ph"))
 	cell.ValueMetadata = ooxml.ParseInt(ooxml.Attr(t, "vm"), 0)
+	if img := p.d.cellImages[cell.ValueMetadata]; img != nil {
+		// A picture in the cell; its #VALUE! placeholder is not a value.
+		cell.Image, cell.ValueMetadata = img, 0
+	}
 	if cm := ooxml.Attr(t, "cm"); cm != "" {
 		cell.Formula = &model.Formula{Dynamic: true}
 	}
@@ -362,6 +365,9 @@ func (p *sheetParser) cellStart(t xml.StartElement, row *model.Row) (*model.Cell
 }
 
 func (p *sheetParser) setValue(cell *model.Cell, typ, text string) {
+	if cell.Image != nil && typ == "e" {
+		return
+	}
 	switch typ {
 	case "s":
 		i, err := strconv.Atoi(strings.TrimSpace(text))

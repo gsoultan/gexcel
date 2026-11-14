@@ -112,7 +112,7 @@ func TestStreamWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 	ss2 := sw.Sheet(model.NewSheet("Second"))
-	ss2.Row(1, &model.Cell{Col: 1, Value: model.String("x")})
+	ss2.Row(1, &model.Cell{Col: 1, Value: model.String("x")}, &model.Cell{Col: 2, Image: &model.CellImage{Data: wtest.PNGDot()}})
 	if err := sw.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +130,16 @@ func TestStreamWriter(t *testing.T) {
 	}
 	if !pr.Has("xl/worksheets/sheet2.xml") || !pr.Has("xl/sharedStrings.xml") {
 		t.Error("parts missing")
+	}
+	// A picture in a streamed cell brings the rich value parts with it.
+	data, _ = pr.Part("xl/worksheets/sheet2.xml")
+	if !strings.Contains(string(data), `<c r="B1" t="e" vm="1"><v>#VALUE!</v></c>`) {
+		t.Errorf("streamed picture cell wrong: %s", data)
+	}
+	for _, part := range []string{"xl/metadata.xml", "xl/richData/rdrichvalue.xml", "xl/richData/richValueRel.xml", "xl/media/image1.png"} {
+		if !pr.Has(part) {
+			t.Errorf("missing %s", part)
+		}
 	}
 }
 

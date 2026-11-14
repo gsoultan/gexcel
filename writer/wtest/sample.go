@@ -107,6 +107,8 @@ func SampleWorkbook() *model.Workbook {
 	sh2.Images = append(sh2.Images, &model.Image{Name: "dot", Format: "png", Data: PNGDot(), Anchor: model.Anchor{Kind: model.AnchorOneCell, From: model.CellOffset{Row: 1, Col: 5}, Width: 64 * model.EMUPerPixel, Height: 64 * model.EMUPerPixel}})
 	sh2.Sparklines = append(sh2.Sparklines, model.SparklineGroup{Type: "line", Sparklines: []model.Sparkline{{Formula: "Report!B2:B5", Ref: ref.MustCell("D2")}}})
 	wb.DefinedNames = append(wb.DefinedNames, model.DefinedName{Name: "TaxRate", RefersTo: "0.2"}, model.DefinedName{Name: "Prices", RefersTo: "Data!$C$2:$C$4", Local: true})
+	// Picture in a cell (rich value), next to the floating picture above.
+	sh2.Cell(30, 1).Image = &model.CellImage{Format: "png", Data: PNGDot(), AltText: "Red dot"}
 	// Dynamic array formula.
 	sh2.Cell(1, 8).Formula = &model.Formula{Text: "SORT(B2:B5)", Kind: model.FormulaArray, Ref: ref.MustRange("H1:H4"), Dynamic: true}
 	return wb

@@ -56,8 +56,12 @@ type Cell struct {
 	// ShowPhonetic (ph="1") shows East Asian phonetic guides.
 	ShowPhonetic bool
 	// ValueMetadata indexes the value metadata (vm) of rich data values
-	// (Excel 365 data types, images in cells). Kept for round trips.
+	// (Excel 365 data types) that are kept verbatim for round trips.
 	ValueMetadata int
+	// Image is a picture placed in the cell (Excel 365 "Place in Cell"). The
+	// picture is the cell's value: it moves, sorts and filters with the
+	// cell. Value and Formula are ignored when it is set.
+	Image *CellImage
 }
 
 // Ref returns the A1 address of the cell.
@@ -65,7 +69,7 @@ func (c *Cell) Ref() string { return ref.Cell{Row: c.Row, Col: c.Col}.String() }
 
 // IsEmpty reports whether the cell has no value, formula or style.
 func (c *Cell) IsEmpty() bool {
-	return c == nil || c.Value.IsEmpty() && c.Formula == nil && c.StyleID == 0
+	return c == nil || c.Value.IsEmpty() && c.Formula == nil && c.StyleID == 0 && c.Image == nil
 }
 
 // Row is a sheet row. Index is 1-based.

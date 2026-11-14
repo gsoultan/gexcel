@@ -22,7 +22,7 @@ own `formats/xlsx` writer to gexcel.
   number formats, `Theme`.
 - `format/` — number-format engine and date serials.
 - `ref/` — A1/R1C1 references, ranges, areas.
-- `formula/` — tokenizer, parser (AST), evaluator, ~230 functions, `Calculator` (workbook calc with
+- `formula/` — tokenizer, parser (AST), evaluator, 205 functions, `Calculator` (workbook calc with
   spilling and cycle detection), `Shift`, `AddPrefixes`/`StripPrefixes` (`_xlfn.`), `IsDynamicArray`.
 - `chart/` — chart model.
 - `ooxml/` — OPC zip package reader/writer, content types, relationships, XML builder and DOM.

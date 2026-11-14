@@ -271,10 +271,21 @@ func (w *sheetWriter) rowXML(b *ooxml.Builder, r *model.Row, cells []*model.Cell
 
 // cellXML writes one <c> element.
 func (w *sheetWriter) cellXML(b *ooxml.Builder, c *model.Cell) {
-	if c.Value.IsEmpty() && c.Formula == nil && c.StyleID == 0 {
+	if c.Value.IsEmpty() && c.Formula == nil && c.StyleID == 0 && c.Image == nil {
 		return
 	}
 	attrs := []string{"r", ref.Cell{Row: c.Row, Col: c.Col}.String(), "s", intAttr(c.StyleID)}
+	if c.Image != nil {
+		// A picture in the cell: #VALUE! for readers without rich values,
+		// and the value metadata that leads to the picture.
+		if vm := w.p.cellImageVM(c.Image); vm > 0 {
+			attrs = append(attrs, "t", "e", "vm", ooxml.Int(vm))
+			b.Start("c", attrs...)
+			b.Elem("v", model.ErrValue)
+			b.End()
+			return
+		}
+	}
 	v := c.Value
 	typ := ""
 	switch v.Kind {
