@@ -40,6 +40,14 @@ for row := range sh.Rows() {
 }
 ```
 
+Workbooks can be saved with a password to open (the ECMA-376 agile encryption that Excel's
+"Encrypt with Password" writes: AES-256, SHA-512, inside an OLE2 container) and opened again:
+
+```go
+err := wb.Save(w, writer.Options{Password: "s3cret"})
+wb, err = gexcel.OpenReader(r, gexcel.Options{Password: "s3cret"}) // ErrEncrypted without one, ErrWrongPassword if wrong
+```
+
 Very large files can be streamed row by row without loading a sheet into memory:
 
 ```go
@@ -81,7 +89,7 @@ img, ok := sh.Cell("A2").Image()
 
 See [`.serena/memories/feature_coverage.md`](.serena/memories/feature_coverage.md) for the
 checklist of Excel features, what is implemented, what is preserved on round trip, and what is
-planned (pivot table editing, chartEx charts, slicers, encryption, legacy `.xls`).
+planned (pivot table editing, chartEx charts, slicers, legacy `.xls`).
 
 ## Development
 

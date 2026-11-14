@@ -5,6 +5,8 @@ package gexcel_test
 import (
 	"bytes"
 	"errors"
+	"github.com/gsoultan/gexcel/reader"
+	"github.com/gsoultan/gexcel/writer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -323,5 +325,38 @@ func TestCellImage(t *testing.T) {
 	}
 	if _, ok := cp.Cell("B2").Image(); !ok {
 		t.Error("CopySheet lost the picture")
+	}
+}
+
+func TestSaveWithPassword(t *testing.T) {
+	wb := gexcel.New()
+	sh := wb.SheetAt(0)
+	sh.Set("A1", "secret cell")
+	sh.Set("B2", 42.5)
+	var buf bytes.Buffer
+	if err := wb.Save(&buf, writer.Options{Password: "open sesame"}); err != nil {
+		t.Fatal(err)
+	}
+	if string(buf.Bytes()[:2]) == "PK" {
+		t.Fatal("encrypted file still starts with a zip signature")
+	}
+	if _, err := gexcel.OpenBytes(buf.Bytes()); !errors.Is(err, reader.ErrEncrypted) {
+		t.Fatalf("without password: %v", err)
+	}
+	if _, err := gexcel.OpenBytes(buf.Bytes(), gexcel.Options{Password: "nope"}); !errors.Is(err, reader.ErrWrongPassword) {
+		t.Fatalf("wrong password: %v", err)
+	}
+	got, err := gexcel.OpenBytes(buf.Bytes(), gexcel.Options{Password: "open sesame"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := got.SheetAt(0).Cell("A1").String(); v != "secret cell" {
+		t.Fatalf("A1 = %q", v)
+	}
+	if v, _ := got.SheetAt(0).Cell("B2").Float(); v != 42.5 {
+		t.Fatalf("B2 = %v", v)
+	}
+	if os.Getenv("GEXCEL_OUT") != "" {
+		os.WriteFile(os.Getenv("GEXCEL_OUT"), buf.Bytes(), 0o644)
 	}
 }

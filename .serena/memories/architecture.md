@@ -60,5 +60,18 @@ model.Workbook ──writer.packer──▶ ooxml.Writer (zip) ──▶ file/by
 
 ## Reader limits
 
-`reader.Options{MaxPartSize (1 GiB default), MaxCells, SkipDrawings, Sheets, Strict}`; CFB/OLE
-(encrypted) files return `ErrEncrypted`.
+`reader.Options{MaxPartSize (1 GiB default), MaxCells, SkipDrawings, Sheets, Strict, Password}`; a
+CFB/OLE (encrypted) file returns `ErrEncrypted` without a password, `ErrWrongPassword` with a wrong
+one, and is otherwise decrypted in memory (`ooxml.Decrypt`, so it must fit MaxPartSize).
+
+## Encryption (ooxml/encrypt.go, ooxml/cfb.go)
+
+`writer.Options{Password}` buffers the plain package and wraps it with `ooxml.Encrypt`: ECMA-376
+agile encryption as Excel writes it — AES-256-CBC over 4096-byte segments (segment IV =
+SHA-512(salt, segment index)), password key via SHA-512 with 100,000 spins (iterator prefixed) and
+the MS-OFFCRYPTO block keys for verifierHashInput/Value, KeyValue, HmacKey/HmacValue; HMAC-SHA512
+dataIntegrity; `EncryptionInfo` v4.4 XML. `ooxml/cfb.go` is a minimal compound-file writer/reader
+(512-byte sectors, mini stream for streams < 4096 bytes) holding `EncryptionInfo` and
+`EncryptedPackage` (8-byte plain length prefix). Verified against LibreOffice (opens with the
+password) and round-trips through `ooxml.Decrypt`. Style keys (`style.Style.Key`) are built with
+hand-written writers instead of fmt for the writer's deduplication hot path.

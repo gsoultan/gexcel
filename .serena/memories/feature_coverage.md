@@ -12,7 +12,10 @@ Legend: ✅ read + write + API · 🔁 preserved on round trip only · 📝 mode
 - 🔁 VBA project (`.xlsm`), external links, customXml, pivot caches
 - 🔁 Rich data other than local images (stocks, geography, web images): every `xl/richData` part
   and `metadata.xml` kept verbatim and relinked by its original relationship type
-- ⏳ Encryption / password-to-open (CFB container), legacy `.xls` reading, `.xlsb`
+- ✅ Password-to-open: ECMA-376 agile encryption (AES-256-CBC, SHA-512, HMAC integrity) in a CFB
+  container, written by `writer.Options{Password}` and read by `Options{Password}` (ooxml/encrypt.go,
+  ooxml/cfb.go); standard/extensible encryption and RC4 are refused with ErrUnsupportedEncryption
+- ⏳ Legacy `.xls` reading, `.xlsb`
 
 ## Cells and data
 - ✅ Numbers, text (SST or inline), rich text runs, booleans, errors, dates/times, durations
@@ -64,7 +67,8 @@ Legend: ✅ read + write + API · 🔁 preserved on round trip only · 📝 mode
 ## Protection
 - ✅ Sheet protection with SHA-512 hashing and per-action permissions, workbook structure lock
 - ✅ Cell lock/hidden flags
-- ⏳ Protected ranges with passwords, file encryption
+- ✅ File encryption (password to open), see Workbook
+- ⏳ Protected ranges with passwords
 
 ## Pivot tables
 - 🔁 Pivot tables and caches survive a round trip untouched

@@ -6,6 +6,7 @@
 package writer
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -34,6 +35,10 @@ type Options struct {
 	// NoFullCalcOnLoad leaves calcPr fullCalcOnLoad unset: cached formula
 	// values are trusted as they are.
 	NoFullCalcOnLoad bool
+	// Password encrypts the file (ECMA-376 agile encryption, AES-256 with
+	// SHA-512) so that it opens only with this password. The package is
+	// built in memory first, so streaming output is not possible with it.
+	Password string
 }
 
 // Errors.
@@ -53,6 +58,15 @@ func Write(wb *model.Workbook, w io.Writer, opts ...Options) error {
 	}
 	if err := Validate(wb); err != nil {
 		return err
+	}
+	if o.Password != "" {
+		var buf bytes.Buffer
+		plain := o
+		plain.Password = ""
+		if err := Write(wb, &buf, plain); err != nil {
+			return err
+		}
+		return ooxml.Encrypt(w, buf.Bytes(), o.Password)
 	}
 	p := newPacker(wb, w, o)
 	for i, sh := range wb.Sheets {
