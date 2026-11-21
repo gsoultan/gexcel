@@ -530,6 +530,9 @@ func fnRowCol(isRow bool) Func {
 			}
 			return Num(float64(r.From.Col))
 		}
+		if !e.spend(r.Rows(), 1) || !e.spend(1, r.Cols()) {
+			return errNum
+		}
 		if isRow {
 			rows := make([][]Value, r.Rows())
 			for i := range rows {
@@ -817,6 +820,9 @@ func fnSequence(e *Evaluator, args []Node) Value {
 	}
 	if rows < 1 || cols < 1 || rows*cols > 1_000_000 {
 		return errValue
+	}
+	if !e.spend(int(rows), int(cols)) {
+		return errNum
 	}
 	out := make([][]Value, int(rows))
 	v := start

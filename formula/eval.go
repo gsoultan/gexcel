@@ -39,6 +39,8 @@ type Evaluator struct {
 	sheet string
 	cell  ref.Cell
 	depth int
+	// work counts the array cells the formula being evaluated has built; see spend.
+	work int
 	// Funcs can override or add functions; keys are upper-case.
 	Funcs map[string]Func
 }
@@ -64,10 +66,10 @@ func (e *Evaluator) Eval(text, sheet string, cell ref.Cell) Value {
 
 // EvalNode evaluates a parsed expression in scope.
 func (e *Evaluator) EvalNode(n Node, sheet string, cell ref.Cell) Value {
-	prevSheet, prevCell := e.sheet, e.cell
-	e.sheet, e.cell = sheet, cell
+	prevSheet, prevCell, prevWork := e.sheet, e.cell, e.work
+	e.sheet, e.cell, e.work = sheet, cell, 0 // each formula has its own budget
 	v := e.deref(e.eval(n))
-	e.sheet, e.cell = prevSheet, prevCell
+	e.sheet, e.cell, e.work = prevSheet, prevCell, prevWork
 	return v
 }
 
@@ -125,7 +127,7 @@ func (e *Evaluator) toArray(v Value) Value {
 			cols = min(cols, max(1, maxCol-r.From.Col+1))
 		}
 	}
-	if rows*cols > maxArrayCells {
+	if !e.spend(rows, cols) {
 		return errNum
 	}
 	out := make([][]Value, rows)
@@ -152,8 +154,23 @@ func (e *Evaluator) cellValue(sheet string, row, col int) Value {
 	return v
 }
 
-// maxArrayCells caps the cells one reference may expand to.
-const maxArrayCells = 10_000_000
+// maxArrayCells caps the array cells one formula may build, over all the
+// arrays it makes on the way to its result: references read as arrays,
+// element-wise operations, generated sequences. A formula that needs more
+// evaluates to #NUM!. Without the cap ROW(A:A)*COLUMN(A:XFD) asks for
+// seventeen billion cells.
+const maxArrayCells = 5_000_000
+
+// spend charges a rows x cols array to the formula's budget and reports
+// whether the formula may build it.
+func (e *Evaluator) spend(rows, cols int) bool {
+	if rows < 0 || cols < 0 || (cols > 0 && rows > maxArrayCells/cols) {
+		e.work = maxArrayCells + 1
+		return false
+	}
+	e.work += rows * cols
+	return e.work <= maxArrayCells
+}
 
 const maxDepth = 256
 
@@ -306,6 +323,9 @@ func (e *Evaluator) mapScalar(v Value, fn func(Value) Value) Value {
 	if v.Kind != Array {
 		return fn(v)
 	}
+	if r, c := v.Dims(); !e.spend(r, c) {
+		return errNum
+	}
 	out := make([][]Value, len(v.Rows))
 	for i, row := range v.Rows {
 		out[i] = make([]Value, len(row))
@@ -327,6 +347,9 @@ func (e *Evaluator) zip(a, b Value, fn func(a, b Value) Value) Value {
 	rows, cols := max(ar, br), max(ac, bc)
 	if (ar != 1 && br != 1 && ar != br) || (ac != 1 && bc != 1 && ac != bc) {
 		// Mismatched: Excel fills with #N/A outside the overlap.
+	}
+	if !e.spend(rows, cols) {
+		return errNum
 	}
 	out := make([][]Value, rows)
 	for i := 0; i < rows; i++ {
@@ -572,6 +595,11 @@ func (e *Evaluator) rangeOf(args []Node, i int) (Value, Value) {
 	}
 	if raw.Kind != Array {
 		return Arr([][]Value{{raw}}), Value{}
+	}
+	// A computed array handed from function to function is charged at each
+	// step, so a long chain of array functions stays within the budget.
+	if r, c := raw.Dims(); !e.spend(r, c) {
+		return errNum, errNum
 	}
 	return raw, Value{}
 }

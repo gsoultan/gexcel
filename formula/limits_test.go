@@ -86,3 +86,52 @@ func TestWholeColumnReferencesAreClipped(t *testing.T) {
 		t.Errorf("whole-column formulas took %v", d)
 	}
 }
+
+// Each formula may build maxArrayCells array cells in total. The nightly
+// FuzzParse run killed its worker a second time on arrays that are computed
+// rather than read: ROW(A:A)*COLUMN(A:XFD) asks for seventeen billion cells,
+// and a chain of operations on a million rows repeats the cost at each step.
+func TestArrayBudget(t *testing.T) {
+	wb := testWorkbook()
+	chain := "ROW(A:A)" + strings.Repeat("+1", 200)
+	nested := strings.Repeat("TRANSPOSE(", 200) + "ROW(A:A)" + strings.Repeat(")", 200)
+	for name, f := range map[string]string{
+		"product":   "ROW(A:A)*COLUMN(A:XFD)",
+		"sum":       "SUM(ROW(A:A)*COLUMN(A:XFD))",
+		"concat":    "ROW(A:A)&COLUMN(A:XFD)",
+		"chain":     chain,
+		"nested":    nested,
+		"unary":     strings.Repeat("-", 200) + "ROW(A:A)",
+		"percent":   "ROW(A:A)" + strings.Repeat("%", 200),
+		"if":        "IF(ROW(A:A)*COLUMN(A:Z)>0,1,2)",
+		"sequences": "SEQUENCE(1000,1000)" + strings.Repeat("*SEQUENCE(1000,1000)", 20),
+	} {
+		start := time.Now()
+		done := make(chan string, 1)
+		go func() { done <- NewCalculator(wb).Evaluate("Data", f).ToModel().Text() }()
+		select {
+		case got := <-done:
+			if got != "#NUM!" {
+				t.Errorf("%s = %.40q, want #NUM!", name, got)
+			}
+			if d := time.Since(start); d > 20*time.Second { // generous: the race detector is slow
+				t.Errorf("%s took %v", name, d)
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatalf("%s did not finish", name)
+		}
+	}
+	// Within the budget nothing changes, and each formula starts afresh.
+	calc := NewCalculator(wb)
+	for f, want := range map[string]string{
+		"SUM(ROW(A:A))=549756338176":            "TRUE",
+		"SUM(ROW(A1:A1000)*COLUMN(A1:J1))":      "27527500",
+		"ROWS(ROW(A:A)*2)":                      "1048576",
+		"SUM(SEQUENCE(1000,1000))=500000500000": "TRUE",
+		"SUM(ROW(A:A)+1)=549757386752":          "TRUE",
+	} {
+		if got := calc.Evaluate("Data", f).ToModel().Text(); got != want {
+			t.Errorf("%s = %q, want %q", f, got, want)
+		}
+	}
+}

@@ -1380,6 +1380,9 @@ func fnIf(e *Evaluator, args []Node) Value {
 			}
 			return v.At(i, j)
 		}
+		if r, c := cond.Dims(); !e.spend(r, c) {
+			return errNum
+		}
 		out := make([][]Value, len(cond.Rows))
 		for i, row := range cond.Rows {
 			out[i] = make([]Value, len(row))

@@ -42,3 +42,11 @@ Open items found while building and validating; pick these up in follow-up PRs.
   127, as Excel), and `Parse` accepted formulas of any length, so tree depth and evaluator
   recursion were unbounded (now `formula.MaxLength` = 8192 characters, Excel's limit).
   Whole-row references such as `1:1` still do not parse (#REF!).
+- The nightly FuzzParse run failed once more, on arrays that are computed rather than read:
+  `ROW(A:A)*COLUMN(A:XFD)` asked for 17 billion cells, and chains such as `ROW(A:A)+1+1+...`
+  repeated a million-cell array at every step. Each formula now has a budget of
+  `maxArrayCells` = 5,000,000 array cells (`Evaluator.spend`, reset per formula in `EvalNode`),
+  charged by `toArray`, `zip`, `mapScalar`, `rangeOf` (computed arrays passed to functions),
+  ROW/COLUMN, SEQUENCE and array IF; past it the formula is #NUM!. The cap on a single
+  reference was 10,000,000 cells before, so references of 5-10M used cells now give #NUM!.
+  New array-building code must call `e.spend(rows, cols)` before it allocates.
