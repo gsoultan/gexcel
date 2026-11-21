@@ -388,6 +388,12 @@ func parseDateText(s string) (float64, bool) {
 	return 0, false
 }
 
+// maxSerial is 31 December 9999, the last date Excel accepts.
+const maxSerial = 2958465
+
+// validSerial reports whether s is a date serial Excel accepts.
+func validSerial(s float64) bool { return s >= 0 && s <= maxSerial }
+
 func (e *Evaluator) holidays(args []Node, i int) map[int]bool {
 	hol := map[int]bool{}
 	if i >= len(args) {
@@ -414,6 +420,9 @@ func fnNetworkDays(e *Evaluator, args []Node) Value {
 	end, err := e.serialArg(args, 1)
 	if err.Kind == Error {
 		return err
+	}
+	if !validSerial(start) || !validSerial(end) {
+		return errNum
 	}
 	hol := e.holidays(args, 2)
 	a, b := int(start), int(end)
@@ -442,6 +451,10 @@ func fnWorkday(e *Evaluator, args []Node) Value {
 	if err.Kind == Error {
 		return err
 	}
+	// Outside the dates Excel knows the walk below would never end.
+	if !validSerial(start) || math.Abs(days) > maxSerial {
+		return errNum
+	}
 	hol := e.holidays(args, 2)
 	d := int(start)
 	step := 1
@@ -451,6 +464,9 @@ func fnWorkday(e *Evaluator, args []Node) Value {
 	}
 	for n := 0; n < int(days); {
 		d += step
+		if d < 0 || d > maxSerial {
+			return errNum
+		}
 		wd := format.FromSerial(float64(d), e.date1904()).Weekday()
 		if wd == time.Saturday || wd == time.Sunday || hol[d] {
 			continue

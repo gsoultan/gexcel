@@ -555,6 +555,9 @@ func fnTextSplit(e *Evaluator, args []Node) Value {
 	return Arr(rows)
 }
 
+// maxDecimals is the most decimal places FIXED and DOLLAR accept in Excel.
+const maxDecimals = 127
+
 func fnFixed(e *Evaluator, args []Node) Value {
 	x, err := e.num(args, 0)
 	if err.Kind == Error {
@@ -563,6 +566,9 @@ func fnFixed(e *Evaluator, args []Node) Value {
 	d, err := e.numDefault(args, 1, 2)
 	if err.Kind == Error {
 		return err
+	}
+	if d > maxDecimals {
+		return errValue
 	}
 	noCommas := false
 	if len(args) > 2 {
@@ -588,6 +594,9 @@ func fnDollar(e *Evaluator, args []Node) Value {
 	d, err := e.numDefault(args, 1, 2)
 	if err.Kind == Error {
 		return err
+	}
+	if d > maxDecimals {
+		return errValue
 	}
 	code := `"$"#,##0`
 	if d > 0 {

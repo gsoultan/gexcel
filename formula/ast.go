@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gsoultan/gexcel/ref"
 )
@@ -78,8 +79,16 @@ type parser struct {
 	pos  int
 }
 
+// MaxLength is the longest formula Excel accepts, in characters.
+const MaxLength = 8192
+
 // Parse builds the expression tree of a formula (leading "=" optional).
+// Formulas longer than MaxLength are refused: the limit also bounds how
+// deep the tree, and so the evaluator's recursion, can get.
 func Parse(text string) (Node, error) {
+	if len(text) > MaxLength && utf8.RuneCountInString(text) > MaxLength {
+		return nil, fmt.Errorf("%w: formula longer than %d characters", ErrSyntax, MaxLength)
+	}
 	toks := Tokenize(text)
 	// Drop whitespace except where it acts as the intersection operator
 	// (between two references), which we do not support; keep it simple.

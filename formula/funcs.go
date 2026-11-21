@@ -680,12 +680,21 @@ func fnCountA(e *Evaluator, args []Node) Value {
 func fnCountBlank(e *Evaluator, args []Node) Value {
 	n := 0
 	for i := range args {
-		each(e.Arg(args, i), func(x Value) bool {
+		raw := e.ArgRaw(args, i)
+		v := e.deref(raw)
+		each(v, func(x Value) bool {
 			if x.Kind == Empty || x.Kind == Text && x.Str == "" {
 				n++
 			}
 			return true
 		})
+		// A reference is read only up to the last used cell; what lies
+		// beyond is blank too.
+		if raw.Kind == Reference && v.Kind != Error {
+			rr, rc := raw.Dims()
+			vr, vc := v.Dims()
+			n += rr*rc - vr*vc
+		}
 	}
 	return Num(float64(n))
 }
@@ -1370,6 +1379,9 @@ func fnIf(e *Evaluator, args []Node) Value {
 				return errNA
 			}
 			return v.At(i, j)
+		}
+		if r, c := cond.Dims(); !e.spend(r, c) {
+			return errNum
 		}
 		out := make([][]Value, len(cond.Rows))
 		for i, row := range cond.Rows {

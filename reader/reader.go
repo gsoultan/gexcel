@@ -96,6 +96,8 @@ type docReader struct {
 	used map[string]bool
 	// streaming: worksheet parts by sheet name, parsed later on demand
 	skipSheets bool
+	// cellImages maps a value metadata index (vm) to the picture in the cell.
+	cellImages map[int]*model.CellImage
 	sheetParts map[string]string
 }
 
@@ -153,6 +155,7 @@ func (d *docReader) read() error {
 			d.use(name)
 		}
 	}
+	d.readCellImages(wbRels)
 	if rel, ok := ooxml.FindRel(wbRels, ooxml.RelPersons); ok {
 		d.use(ooxml.Resolve(d.wbPart, rel.Target))
 	}
@@ -174,6 +177,7 @@ func (d *docReader) read() error {
 			}
 		case ooxml.RelRichValue:
 			if raw := d.rawPart(name); raw != nil {
+				raw.RelType = rel.Type
 				d.wb.RichData = append(d.wb.RichData, raw)
 			}
 		case ooxml.RelWorksheet, ooxml.RelChartsheet, ooxml.RelDialogsheet, ooxml.RelMacrosheet, ooxml.RelStyles, ooxml.RelTheme,
@@ -182,7 +186,14 @@ func (d *docReader) read() error {
 			if rel.TargetMode == "External" {
 				continue
 			}
-			if raw := d.rawPart(name); raw != nil {
+			raw := d.rawPart(name)
+			if raw == nil {
+				continue
+			}
+			raw.RelType = rel.Type
+			if isRichDataRel(rel.Type) {
+				d.wb.RichData = append(d.wb.RichData, raw)
+			} else {
 				d.wb.Preserved = append(d.wb.Preserved, raw)
 			}
 		}

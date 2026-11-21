@@ -50,6 +50,18 @@ for row, err := range st.Rows("Data") { ... }
 
 and written with `writer.NewStreamWriter`, which emits rows straight into the zip entry.
 
+Pictures come in two kinds. A floating picture sits over the grid at a cell, between two cells
+or at an absolute position, and every spreadsheet application shows it. A picture *in* a cell
+(Excel 365 "Place in Cell") is the cell's value: it scales to the cell and moves, sorts and
+filters with it; applications without rich values (Excel 2019 and earlier, LibreOffice) show
+`#VALUE!` there instead.
+
+```go
+sh.AddImage("F2", model.Image{Data: png})                           // floating, anchored at F2
+sh.Cell("A2").SetImage(model.CellImage{Data: png, AltText: "Logo"}) // in the cell
+img, ok := sh.Cell("A2").Image()
+```
+
 ## Packages
 
 | Package   | Purpose |
@@ -59,9 +71,9 @@ and written with `writer.NewStreamWriter`, which emits rows straight into the zi
 | `style`   | Fonts, fills, borders, alignment, colors (RGB, theme + tint, indexed), number-format ids and the document theme. |
 | `format`  | Excel number-format engine (`format.Number`, dates, elapsed time, fractions, sections, conditions) and date serial conversion. |
 | `ref`     | A1 / R1C1 cell and range references, areas, sheet-name quoting. |
-| `formula` | Tokenizer, parser, evaluator (~230 functions incl. dynamic arrays, XLOOKUP, LET, structured references, 3-D references), workbook calculator with spilling, `_xlfn.` prefix handling, reference shifting. |
+| `formula` | Tokenizer, parser, evaluator (about 200 functions incl. dynamic arrays, XLOOKUP, LET, structured references, 3-D references), workbook calculator with spilling, `_xlfn.` prefix handling, reference shifting. |
 | `chart`   | Chart model: column/bar/line/pie/doughnut/area/scatter/bubble/radar/stock/surface (+3-D variants), axes, data labels, trendlines, error bars, overlays and secondary axes. |
-| `reader`  | OOXML parser: token-streamed rows, styles, theme, shared strings, drawings, charts, comments and threaded comments, tables, sparklines, data bars, VBA/pivot/customXml preservation, zip-bomb limits, row streaming. |
+| `reader`  | OOXML parser: token-streamed rows, styles, theme, shared strings, drawings, pictures in cells, charts, comments and threaded comments, tables, sparklines, data bars, VBA/pivot/customXml preservation, zip-bomb limits, row streaming. |
 | `writer`  | OOXML writer with a streaming mode; sheet protection hashing; `Validate` for pre-save checks. |
 | `ooxml`   | OPC package layer (zip, content types, relationships) and a small XML builder/DOM. |
 

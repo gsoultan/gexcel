@@ -191,6 +191,19 @@ func (c *Calculator) CellValue(sheet string, row, col int) (Value, bool) {
 	return c.cellValue(si, row, col), true
 }
 
+// Extent implements Extenter: the last used row and column of a sheet.
+func (c *Calculator) Extent(sheet string) (rows, cols int, ok bool) {
+	si := c.wb.SheetIndex(sheet)
+	if si < 0 {
+		return 0, 0, false
+	}
+	used, any := c.wb.Sheets[si].UsedRange()
+	if !any {
+		return 0, 0, true
+	}
+	return used.To.Row, used.To.Col, true
+}
+
 // Name implements Context.
 func (c *Calculator) Name(name, sheet string) (string, bool) {
 	si := c.wb.SheetIndex(sheet)

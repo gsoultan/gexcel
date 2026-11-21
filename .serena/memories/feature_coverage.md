@@ -9,7 +9,9 @@ Legend: ✅ read + write + API · 🔁 preserved on round trip only · 📝 mode
 - ✅ Date systems (1900 with leap bug, 1904)
 - ✅ Workbook protection attributes, calc properties, full-calc-on-load
 - 🔁 Chart sheets, dialog sheets, macro sheets (raw parts; chart of chart sheet is parsed)
-- 🔁 VBA project (`.xlsm`), external links, customXml, rich data, pivot caches
+- 🔁 VBA project (`.xlsm`), external links, customXml, pivot caches
+- 🔁 Rich data other than local images (stocks, geography, web images): every `xl/richData` part
+  and `metadata.xml` kept verbatim and relinked by its original relationship type
 - ⏳ Encryption / password-to-open (CFB container), legacy `.xls` reading, `.xlsb`
 
 ## Cells and data
@@ -17,7 +19,7 @@ Legend: ✅ read + write + API · 🔁 preserved on round trip only · 📝 mode
 - ✅ Number formats: builtin ids + custom codes; full rendering engine (`Cell.Formatted`)
 - ✅ Formulas: normal, shared (expanded on read), legacy array (CSE), dynamic array with spill
   metadata, data-table formulas, `_xlfn.` prefix handling, R1C1 parsing
-- ✅ Formula calculation (`Workbook.Calculate`): ~230 functions — math, statistics, logical, text,
+- ✅ Formula calculation (`Workbook.Calculate`): 205 functions — math, statistics, logical, text,
   lookup (VLOOKUP/XLOOKUP/INDEX/MATCH/OFFSET/INDIRECT), dynamic arrays (FILTER/SORT/SORTBY/UNIQUE/
   SEQUENCE/TEXTSPLIT/VSTACK/HSTACK/TAKE/DROP/CHOOSEROWS/CHOOSECOLS/TOCOL/TOROW), date/time,
   financial (PMT/FV/PV/NPV/IPMT/PPMT/NPER/RATE/IRR), information, LET, structured and 3-D references
@@ -45,6 +47,12 @@ Legend: ✅ read + write + API · 🔁 preserved on round trip only · 📝 mode
   pie-of-pie/bar-of-pie, area, scatter, bubble, radar, stock, surface; titles, legends, axes
   (scaling, units, number formats, gridlines, log, reverse, date axes), data labels, trendlines,
   error bars, data points, overlays/combo charts with secondary axes, data tables, 3-D view
+- ✅ Pictures in cells (Excel 365 "Place in Cell", `Cell.SetImage` / `Cell.Image`,
+  `model.CellImage`): alt text, decorative flag, identical pictures share one rich value and one
+  media part; read, written (also by the stream writer) and checked byte for byte against
+  XlsxWriter's `embed_image` output for metadata.xml, richValueRel.xml and rdRichValueTypes.xml.
+  Not opened in real Excel from CI. LibreOffice and Excel <= 2019 show `#VALUE!` in those cells
+- ⏳ `IMAGE()` function / web images in cells (`_webimage` rich values; preserved raw)
 - 📝 Shapes (preset geometry, fill, line, text) — written; read keeps raw anchor XML
 - ⏳ chartEx charts (treemap, sunburst, waterfall, funnel, histogram, box & whisker), SmartArt,
   form controls, OLE objects (preserved raw only)

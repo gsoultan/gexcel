@@ -4,6 +4,7 @@ package reader_test
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/gsoultan/gexcel/model"
@@ -159,6 +160,9 @@ func FuzzRead(f *testing.F) {
 		f.Fatal(err)
 	}
 	f.Add(buf.Bytes())
+	if data, err := os.ReadFile(cellImagesFixture); err == nil {
+		f.Add(data)
+	}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		wb, err := reader.ReadBytes(data, reader.Options{MaxPartSize: 1 << 22, MaxCells: 100000})
 		if err != nil || wb == nil {

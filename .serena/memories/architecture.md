@@ -23,6 +23,18 @@ model.Workbook ──writer.packer──▶ ooxml.Writer (zip) ──▶ file/by
 - Raw-part preservation: chart sheets, dialog/macro sheets, VBA (`vbaProject.bin`), pivot caches and
   tables, external links, customXml, rich data and unknown `extLst` entries are kept as
   `model.RawPart`/`RawXML` and written back.
+- Pictures in cells: `model.Cell.Image *model.CellImage`. The writer emits the cell as
+  `t="e" vm="N"` with `#VALUE!` and collects the pictures in `packer.cellImages`
+  (`writer/richdata.go`); `finish` then writes the media parts (deferred: a sheet zip entry is
+  still open while cells are written), `xl/richData/{richValueRel,rdrichvalue,rdrichvaluestructure,
+  rdRichValueTypes}.xml` and regenerates `xl/metadata.xml` (`metadataXML(dynamic, images)`:
+  XLDAPR type first so `cm="1"` stays valid, then XLRICHVALUE). `reader/richdata.go`
+  (`readCellImages`) resolves vm -> valueMetadata -> futureMetadata rvb -> rich value -> rel ->
+  media before sheets are parsed and takes over only when every rich value structure is
+  `_localImage` and the metadata types are XLDAPR/XLRICHVALUE; otherwise all rich data stays raw
+  in `Workbook.RichData` (each `RawPart.RelType` keeps the workbook relationship type) and adding
+  `Cell.Image` to such a workbook fails with `writer.ErrUnsupported`. The model keeps the cell
+  value empty for picture cells; `#VALUE!` exists only in the file.
 - Charts: `chart.Chart` is written as a full `c:chartSpace`; on read the chart is parsed into the
   model and the raw bytes kept in `Chart.Raw`. chartEx types (treemap, sunburst, waterfall, funnel,
   histogram, box & whisker) are modelled but the writer returns `ErrUnsupported` for them.

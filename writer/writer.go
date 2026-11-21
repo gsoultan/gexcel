@@ -108,6 +108,7 @@ type packer struct {
 	persons                                                      map[string]string // author -> person id
 	personOrder                                                  []string
 	hasDynamic                                                   bool
+	cellImages                                                   cellImages
 	workbookRels                                                 []ooxml.Relationship
 	extraDefinedNames                                            []model.DefinedName
 }
@@ -243,11 +244,17 @@ func (p *packer) finish() error {
 		}
 		p.pw.Rel("xl/workbook.xml", ooxml.RelSharedStrings, "sharedStrings.xml", "")
 	}
-	// Dynamic array metadata.
-	if p.hasDynamic || len(wb.Metadata) > 0 {
+	// Pictures in cells.
+	if err := p.writeCellImages(); err != nil {
+		return err
+	}
+	// Dynamic array and rich value metadata. Pictures in cells need their
+	// value-metadata blocks, so the part is regenerated when there are any.
+	nImages := len(p.cellImages.values)
+	if p.hasDynamic || nImages > 0 || len(wb.Metadata) > 0 {
 		data := wb.Metadata
-		if len(data) == 0 {
-			data = metadataXML()
+		if len(data) == 0 || nImages > 0 {
+			data = metadataXML(p.hasDynamic, nImages)
 		}
 		if err := p.pw.Add("xl/metadata.xml", ooxml.CTMetadata, data); err != nil {
 			return err
@@ -330,7 +337,11 @@ func (p *packer) finish() error {
 		if err := p.writeRawRelated(raw.Name, raw); err != nil {
 			return err
 		}
-		p.pw.Rel("xl/workbook.xml", ooxml.RelRichValue, ooxml.Relative("xl/workbook.xml", raw.Name), "")
+		relType := raw.RelType
+		if relType == "" {
+			relType = ooxml.RelRichValue
+		}
+		p.pw.Rel("xl/workbook.xml", relType, ooxml.Relative("xl/workbook.xml", raw.Name), "")
 	}
 	// Workbook.
 	ct := ooxml.CTWorkbook
@@ -378,7 +389,7 @@ func relTypeForPreserved(raw *model.RawPart) string {
 	if strings.HasPrefix(raw.Name, "customXml/item") && !strings.Contains(raw.Name, "Props") {
 		return ooxml.RelCustomXML
 	}
-	return ""
+	return raw.RelType
 }
 
 // workbookXML builds xl/workbook.xml.
@@ -613,12 +624,4 @@ func externalLinkXML(el *model.ExternalLink) []byte {
 	}
 	b.End().End()
 	return b.Bytes()
-}
-
-// metadataXML is the xl/metadata.xml part that marks dynamic array formulas.
-func metadataXML() []byte {
-	return []byte(ooxml.Header + `<metadata xmlns="` + ooxml.NSMain + `" xmlns:xda="` + ooxml.NSXDA + `">` +
-		`<metadataTypes count="1"><metadataType name="XLDAPR" minSupportedVersion="120000" copy="1" pasteAll="1" pasteValues="1" merge="1" splitFirst="1" rowColShift="1" clearFormats="1" clearComments="1" assign="1" coerce="1" cellMeta="1"/></metadataTypes>` +
-		`<futureMetadata name="XLDAPR" count="1"><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><xda:dynamicArrayProperties fDynamic="1" fCollapsed="0"/></ext></extLst></bk></futureMetadata>` +
-		`<cellMetadata count="1"><bk><rc t="1" v="0"/></bk></cellMetadata></metadata>`)
 }
